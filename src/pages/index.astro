@@ -1,94 +1,70 @@
 ---
 import MainLayout from '../layouts/Default.astro';
 import { getCollection } from 'astro:content';
-import ProjectCard from '../components/projects/ProjectCard.astro';
 import MapVisualizer from '../components/visualizations/MapVisualizer.js';
+import studentData from '../../processing/student_data_verified.json';
 
-// Get featured projects
-const featuredProjects = await getCollection('projects', ({ data }) => data.featured);
+// Get all project CD codes for the map from the student data
+const studentProjectCDs = studentData
+  .filter(s => s.community_district && !s.needs_review)
+  .map(s => s.community_district);
 
-// Get all project CD codes for the map
-const allProjects = await getCollection('projects');
-let projectCDs = allProjects.map(project => project.data.cdCode);
-// Filter out projects that are draft 
-projectCDs = projectCDs.filter(cd => {
-  const project = allProjects.find(p => p.data.cdCode === cd);
-  return project && !project.data.draft;
+// Also get project CD codes from content collection (merging both sources)
+const contentProjects = await getCollection('projects');
+const contentProjectCDs = contentProjects
+  .filter(p => !p.data.draft)
+  .map(p => p.data.cdCode);
+
+// Combine and deduplicate CD codes
+let projectCDs = [...new Set([...studentProjectCDs, ...contentProjectCDs])].sort();
+
+// Create a mapping from CD codes to project slugs/URLs
+const cdToSlugMap: Record<string, string> = {};
+
+// Add content collection projects first
+contentProjects.forEach(project => {
+  if (!project.data.draft) {
+    cdToSlugMap[project.data.cdCode] = `/projects/${project.slug}`;
+  }
 });
 
-// Create a mapping from CD codes to project slugs for direct navigation
-const cdToSlugMap = Object.fromEntries(
-  allProjects.map(project => [project.data.cdCode, project.slug])
-);
+// Add student data projects (this allows overriding or adding new ones)
+studentData.forEach(student => {
+  if (student.community_district && student.storymap_url && !student.needs_review) {
+    // If we already have a proper project page, keep it, otherwise use the storymap URL directly
+    // But since the prompt implies a modal -> storymap flow for these, we'll likely need to handle this in the map component
+    // For now, we'll store the external URL. The MapVisualizer needs to handle external URLs vs internal slugs.
+    if (!cdToSlugMap[student.community_district]) {
+      cdToSlugMap[student.community_district] = student.storymap_url;
+    }
+  }
+});
 ---
 
 <MainLayout title="CDSpec - NYC Community District Analysis" 
             description="Targeted, speculative, and people-centered analyses of Community Districts in New York City">
   
   <!-- Hero Section - Make it full screen height with larger map -->
-  <section class="min-h-screen flex flex-col pt-16 bg-gradient-to-b from-background to-secondary/20 header-offset">
-    <div class="container flex-1 flex flex-col">
-      <div class="mx-auto text-center fade-in mb-4">
+  <section class="min-h-screen flex flex-col pt-8 bg-gradient-to-b from-background to-secondary/20 header-offset">
+    <div class="w-full flex-1 flex flex-col">
+      <div class="container mx-auto text-center fade-in mb-4">
         <h1 class="text-5xl md:text-6xl font-bold leading-tight mb-3">NYC CDSpec</h1>
         <p class="text-xl text-muted-foreground max-w-3xl mx-auto mb-6">
           In-depth specifications of New York City's Community Districts, providing insights into neighborhood planning and development.
         </p>
       </div>
       
-      <!-- Map added to hero section with navigation pills on sides -->
-      <div class="relative rounded-2xl overflow-hidden border border-muted/30 shadow-xl flex-1 mx-auto w-full max-w-[95%] mb-6">
-        <!-- Left side navigation pills -->
-        <div class="map-nav-pills map-nav-pills-left">
-          {projectCDs.slice(0, Math.ceil(projectCDs.length/2)).map(cd => (
-            <button class="map-nav-pill" data-CD={cd} aria-label={`Navigate to ${cd}`}>
-              <span class="map-nav-pill-text">{cd}</span>
-            </button>
-          ))}
-        </div>
-        
-        <!-- Right side navigation pills -->
-        <div class="map-nav-pills map-nav-pills-right">
-          {projectCDs.slice(Math.ceil(projectCDs.length/2)).map(cd => (
-            <button class="map-nav-pill" data-CD={cd} aria-label={`Navigate to ${cd}`}>
-              <span class="map-nav-pill-text">{cd}</span>
-            </button>
-          ))}
-        </div>
-        
-        <div id="home-map-container" class="h-full min-h-[55vh]">
+      <!-- Map added to hero section -->
+      <div class="relative overflow-hidden border-b border-black flex-1 w-full flex flex-col mb-0 pb-0">
+        <div id="home-map-container" class="h-full min-h-[65vh] w-full">
           <MapVisualizer 
-            client:load 
+            client:only="react" 
             projectCDs={projectCDs} 
             mapId="home-page-map" 
             CDToSlugMap={cdToSlugMap}
             initialZoom={11}
           />
         </div>
-      </div>
-      
-      <!-- Brief intro text -->
-      <div class="text-center max-w-2xl mx-auto mb-8">
-        <p class="text-muted-foreground">
-          Click on a Community District above to explore student projects showcasing planning analysis and proposals for NYC neighborhoods.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <!-- Featured Projects Section -->
-  <section class="py-20 bg-background">
-    <div class="container">
-      <div class="text-center mb-12">
-        <h2 class="text-3xl md:text-4xl font-bold mb-4">Featured Projects</h2>
-        <p class="text-muted-foreground max-w-2xl mx-auto">
-          Explore our collection of community district analysis projects created by urban planning students.
-        </p>
-      </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {featuredProjects.map(project => (
-          <ProjectCard project={project} />
-        ))}
       </div>
     </div>
   </section>
@@ -97,59 +73,13 @@ const cdToSlugMap = Object.fromEntries(
   <script>
     // Wait for the page to load
     document.addEventListener('DOMContentLoaded', function() {
-      // Add click handlers to map navigation pills
-      const mapNavPills = document.querySelectorAll('.map-nav-pill');
-      
-      mapNavPills.forEach((pill, index) => {
-        pill.addEventListener('click', function() {
-          const cdCode = pill.getAttribute('data-CD');
-          console.log(`Pill ${index}: ${cdCode}`);
-          
-          // Remove active class from all pills
-          mapNavPills.forEach(p => p.classList.remove('active'));
-          
-          // Add active class to clicked pill
-          pill.classList.add('active');
-          
-                     // Create a new navigation pill element for smooth transition
-           const newPill = pill.cloneNode(true) as HTMLButtonElement;
-           const pillCdCode = newPill.getAttribute('data-CD');
-           if (!pillCdCode) return;
-          
-          console.log(`Pill clicked: ${pillCdCode}`);
-          
-          // Dispatch custom event for map navigation
-          const navigationEvent = new CustomEvent('navigateToCD', {
-            detail: {
-              cdCode: pillCdCode,
-              mapId: 'home-page-map'
-            }
-          });
-          
-          console.log(`Dispatching map navigation event for ${pillCdCode}`);
-          window.dispatchEvent(navigationEvent);
-        });
-      });
-
-             // Listen for map navigation events
+      // Listen for map navigation events from other components
        window.addEventListener('navigateToCD', function(event) {
          const customEvent = event as CustomEvent;
          const { cdCode, mapId } = customEvent.detail || {};
          if (mapId !== 'home-page-map' || !cdCode) return;
-        
-        // Find and highlight the corresponding pill
-        const pillSelector = `.map-nav-pill[data-CD="${cdCode}"]`;
-        const correspondingPill = document.querySelector(pillSelector);
-        
-        if (correspondingPill) {
-          // Remove active class from all pills
-          document.querySelectorAll('.map-nav-pill').forEach(p => p.classList.remove('active'));
-          
-          // Add active class to the corresponding pill
-          correspondingPill.classList.add('active');
-        }
       });
     });
-</script>
+  </script>
 </MainLayout>
 

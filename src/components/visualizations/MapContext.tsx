@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useMemo } from 'react';
 
 // Type declarations for window extensions
 declare global {
@@ -185,21 +185,28 @@ export const MapProvider: React.FC<{children: React.ReactNode}> = ({ children })
     }
   }, []);
 
+  const contextValue = useMemo(() => ({
+    mapInstance,
+    setMapInstance,
+    mapInitialized,
+    setMapInitialized,
+    geojsonData,
+    setGeojsonData,
+    deckOverlay,
+    setDeckOverlay,
+    tooltipRef,
+    registerTooltip,
+    getTooltip
+  }), [
+    mapInstance,
+    mapInitialized,
+    geojsonData,
+    deckOverlay
+  ]);
+
   return (
     <MapContext.Provider 
-      value={{
-        mapInstance,
-        setMapInstance,
-        mapInitialized,
-        setMapInitialized,
-        geojsonData,
-        setGeojsonData,
-        deckOverlay,
-        setDeckOverlay,
-        tooltipRef,
-        registerTooltip,
-        getTooltip
-      }}
+      value={contextValue}
     >
       {children}
     </MapContext.Provider>

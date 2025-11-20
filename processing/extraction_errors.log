@@ -1,0 +1,19 @@
+DEVIANT FORMAT: patwardhanishanparag_183221_13662727_MN08_HardSystems_Checklist.csv - trying fuzzy search.
+MISSING DATA: patwardhanishanparag_183221_13662727_MN08_HardSystems_Checklist.csv - No Community District found.
+MISSING DATA: patwardhanishanparag_183221_13662727_MN08_HardSystems_Checklist.csv - No StoryMap URL found.
+CSV FAIL: yochmannadav_183285_13661689_CDspec_ Lecture Checklist - Nadav Yochman (1).csv (Detected Excel file signature). Attempting with Pandas...
+FATAL: Could not process yochmannadav_183285_13661689_CDspec_ Lecture Checklist - Nadav Yochman (1).csv. Error: Pandas library not available for advanced parsing.
+MISSING DATA: yochmannadav_183285_13661689_CDspec_ Lecture Checklist - Nadav Yochman (1).csv - No Community District found.
+MISSING DATA: yochmannadav_183285_13661689_CDspec_ Lecture Checklist - Nadav Yochman (1).csv - No StoryMap URL found.
+URL MISMATCH: caifengze - Part 1: https://arcg.is/1m0P1v vs Part 2: https://storymaps.arcgis.com/stories/7401643e62364e2185f866f48b74b3e6
+URL MISMATCH: corkranmatthias - Part 1: https://www.arcgis.com/sharing/rest/oauth2/authorize?client_id=arcgisstorymaps&response_type=token&expiration=20160&redirect_uri=https%3A%2F%2Fstorymaps.arcgis.com%2Foauth-callback%3FreturnURL%3D%252Fstories%252F7411f3c1c6ff43838dc3cb6c4bf0b2d5&hideCancel=true&showSignupOption=true&force_login=true vs Part 2: https://www.arcgis.com/sharing/rest/oauth2/authorize?client_id=arcgisstorymaps&amp;response_type=token&amp;expiration=20160&amp;redirect_uri=https%3A%2F%2Fstorymaps.arcgis.com%2Foauth-callback%3FreturnURL%3D%252Fstories%252F7411f3c1c6ff43838dc3cb6c4bf0b2d5&amp;hideCancel=true&amp;showSignupOption=true&amp;force_login=true
+URL MISMATCH: daidingran - Part 1: https://arcg.is/1eTT091 vs Part 2: https://arcg.is/1HWuTG4
+URL MISMATCH: jiangbryant - Part 1: https://arcg.is/1Tnai01 vs Part 2: https://docs.google.com/spreadsheets/d/1A36s8zbjUe1t1wEKOUrZ9Z6r0uMEV2wXF0r7kkChxp4/edit?usp=sharing
+URL MISMATCH: mantegnanina - Part 1: https://storymaps.arcgis.com/stories/173de4f6a62b4a9c8119b12a3115b666 vs Part 2: https://arcg.is/9jjfi
+UPDATED: patwardhanishanparag - Using Part 2 URL (Part 1 missing).
+URL MISMATCH: raoyu - Part 1: https://arcg.is/S8WGn1 vs Part 2: https://arcg.is/0K9mrG0
+URL MISMATCH: songhaoyang - Part 1: https://arcg.is/1aHjfu vs Part 2: https://docs.google.com/spreadsheets/d/1H_Heuq1ELYq9wzE_Rf6g0LPj9LwayLbLjHnWyuPy6T0/edit?usp=sharing
+URL MISMATCH: yeleafred - Part 1: https://storymaps.arcgis.com/stories/c8677538f05c44dda41130ecbf561ee8 vs Part 2: https://docs.google.com/spreadsheets/d/17nSCfj2INz_z6RRryCsI2OTH77QQEzJs/edit?usp=sharing&amp;ouid=102757148438760752824&amp;rtpof=true&amp;sd=true
+UPDATED: yochmannadav - Using Part 2 URL (Part 1 missing).
+URL MISMATCH: zhangwenzhuo - Part 1: https://storymaps.arcgis.com/stories/c90b7182f31349a98f2020e651b09605 vs Part 2: https://docs.google.com/spreadsheets/d/17HLjohGeeV5yA4RpXpEzO-iOD6vN66gl6ZOGvDvZxOU/edit?usp=sharing
+URL MISMATCH: zhangziji - Part 1: https://storymaps.arcgis.com/stories/39a946118428419c9aa1f26eb226e6fc vs Part 2: https://storymaps.arcgis.com/stories/550529d1bca047efa250e1cb9db5173f

@@ -1,0 +1,201 @@
+[
+  {
+    "student": "caifengze",
+    "community_district": "Brooklyn CD1",
+    "storymap_url": "https://arcg.is/1m0P1v",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/1m0P1v",
+    "part_2_completed": true,
+    "url_mismatch": false
+  },
+  {
+    "student": "changxiang",
+    "community_district": "CD206",
+    "storymap_url": "https://arcg.is/15KnDO0",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/15KnDO0",
+    "part_2_completed": true
+  },
+  {
+    "student": "corkranmatthias",
+    "community_district": "Brooklyn CD9",
+    "storymap_url": "https://storymaps.arcgis.com/stories/7411f3c1c6ff43838dc3cb6c4bf0b2d5",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/7411f3c1c6ff43838dc3cb6c4bf0b2d5",
+    "part_2_completed": true,
+    "url_mismatch": false
+  },
+  {
+    "student": "daidingran",
+    "community_district": "CD102",
+    "storymap_url": "https://arcg.is/1eTT091",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/1HWuTG4",
+    "part_2_completed": true,
+    "url_mismatch": true
+  },
+  {
+    "student": "durisetisoumya",
+    "community_district": "111 East Harlem",
+    "storymap_url": "https://arcg.is/1KSfX83",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/1KSfX83",
+    "part_2_completed": true
+  },
+  {
+    "student": "hanzirui",
+    "community_district": "105",
+    "storymap_url": "https://arcg.is/1HTrjP2",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/1HTrjP2",
+    "part_2_completed": true
+  },
+  {
+    "student": "huangjay",
+    "community_district": "402",
+    "storymap_url": "https://arcg.is/1arzzu2",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/1arzzu2",
+    "part_2_completed": true
+  },
+  {
+    "student": "jacey",
+    "community_district": "201",
+    "storymap_url": "https://arcg.is/bTyOa1",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/bTyOa1",
+    "part_2_completed": true
+  },
+  {
+    "student": "jiangbryant",
+    "community_district": "Manhattan 6 (106)",
+    "storymap_url": "https://arcg.is/1Tnai01",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/9a16843b9ac342328227df330d546ad6",
+    "part_2_completed": true,
+    "url_mismatch": true
+  },
+  {
+    "student": "kongedmondchakchun",
+    "community_district": "Queens CD 11",
+    "storymap_url": "https://storymaps.arcgis.com/stories/af4fd0b2e146407f91d3593b80570511",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/af4fd0b2e146407f91d3593b80570511",
+    "part_2_completed": true
+  },
+  {
+    "student": "louruowen",
+    "community_district": "[Staten Island 1 (501)]",
+    "storymap_url": "https://arcg.is/TCejr",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/TCejr",
+    "part_2_completed": true
+  },
+  {
+    "student": "mantegnanina",
+    "community_district": "BKCD2",
+    "storymap_url": "https://storymaps.arcgis.com/stories/173de4f6a62b4a9c8119b12a3115b666",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/9jjfi",
+    "part_2_completed": true,
+    "url_mismatch": true
+  },
+  {
+    "student": "patwardhanishanparag",
+    "community_district": null,
+    "storymap_url": "https://arcg.is/0qDnSj",
+    "needs_review": true,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/0qDnSj",
+    "part_2_completed": true
+  },
+  {
+    "student": "raoyu",
+    "community_district": "Manhattan Community District 1",
+    "storymap_url": "https://arcg.is/S8WGn1",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/0K9mrG0",
+    "part_2_completed": true,
+    "url_mismatch": true
+  },
+  {
+    "student": "songhaoyang",
+    "community_district": "Manhattan Community District 4 (104)",
+    "storymap_url": "https://arcg.is/1aHjfu",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://arcg.is/1aHjfu",
+    "part_2_completed": true,
+    "url_mismatch": false
+  },
+  {
+    "student": "tsaihsinyu",
+    "community_district": "Bronx 2 (202)",
+    "storymap_url": "https://storymaps.arcgis.com/stories/dd22acc0dca54146b511811147177dd2",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/dd22acc0dca54146b511811147177dd2",
+    "part_2_completed": true
+  },
+  {
+    "student": "yaulliherreragabriela",
+    "community_district": "Queens 1",
+    "storymap_url": "https://storymaps.arcgis.com/stories/fd1dd6c2bdb644898194bdefba17ec16",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/fd1dd6c2bdb644898194bdefba17ec16",
+    "part_2_completed": true
+  },
+  {
+    "student": "yeleafred",
+    "community_district": "407",
+    "storymap_url": "https://storymaps.arcgis.com/stories/c8677538f05c44dda41130ecbf561ee8",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/c8677538f05c44dda41130ecbf561ee8",
+    "part_2_completed": true,
+    "url_mismatch": false
+  },
+  {
+    "student": "yochmannadav",
+    "community_district": "312",
+    "storymap_url": "https://storymaps.arcgis.com/stories/3277a502bf5b479dab707f447a37c55e",
+    "needs_review": true,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/3277a502bf5b479dab707f447a37c55e",
+    "part_2_completed": true
+  },
+  {
+    "student": "zhangwenzhuo",
+    "community_district": "112",
+    "storymap_url": "https://storymaps.arcgis.com/stories/c90b7182f31349a98f2020e651b09605",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/c90b7182f31349a98f2020e651b09605",
+    "part_2_completed": true,
+    "url_mismatch": false
+  },
+  {
+    "student": "zhangziji",
+    "community_district": "103",
+    "storymap_url": "https://storymaps.arcgis.com/stories/550529d1bca047efa250e1cb9db5173f",
+    "needs_review": false,
+    "part_1_completed": true,
+    "storymap_url_2": "https://storymaps.arcgis.com/stories/550529d1bca047efa250e1cb9db5173f",
+    "part_2_completed": true,
+    "url_mismatch": false
+  }
+]

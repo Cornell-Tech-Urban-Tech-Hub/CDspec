@@ -1,5 +1,5 @@
 /* Font imports - Using system fonts + web fonts for enhanced typography */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Bitter:wght@400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Bitter:wght@400;500;700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 @import url('https://use.typekit.net/ptx6khk.css');
 
 :root {
@@ -40,7 +40,7 @@
 
 /* Base HTML styling with improved typography */
 html {
-  font-family: 'din-2014', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   scroll-behavior: smooth;
   background-color: var(--background);
   color: var(--text-primary);
@@ -63,7 +63,7 @@ body {
 
 /* Enhanced Typography */
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'din-2014', serif;
+  font-family: 'IBM Plex Sans', serif;
   font-weight: 700;
   letter-spacing: -0.025em;
   margin-top: 1.5em;
@@ -115,7 +115,7 @@ a:hover {
   overflow: hidden;
   background: linear-gradient(135deg, var(--cornell-light-gray) 0%, var(--sys-color-white) 100%);
   margin-top: 0 !important;
-  padding-top: calc(var(--header-height) + 2rem) !important;
+  padding-top: 2rem !important; /* Reduced from calc(header + 2rem) since header is gone */
 }
 
 /* Ensure hero button is always clickable and visible */
@@ -443,6 +443,7 @@ main > section:first-child.header-offset {
   overflow: hidden;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
   border: 1px solid rgba(0, 0, 0, 0.08);
+  margin-bottom: 0 !important; /* Override any bottom margin */
 }
 
 .map-overlay {
@@ -559,149 +560,7 @@ main > section:first-child.header-offset {
   text-overflow: ellipsis;
 }
 
-/* Map navigation pills styling - CONSOLIDATED VERSION */
-.map-nav-pills {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  z-index: 10;
-  max-height: 80%;
-  overflow-y: auto;
-  -ms-overflow-style: none;  /* Hide scrollbar IE and Edge */
-  scrollbar-width: thin;  
-  scrollbar-color: rgba(100,116,139,0.3) transparent;
-  mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
-}
-
-/* Hide scrollbar for Chrome, Safari and Opera */
-.map-nav-pills::-webkit-scrollbar {
-  width: 4px;
-  display: none;
-}
-
-.map-nav-pills::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.map-nav-pills::-webkit-scrollbar-thumb {
-  background-color: rgba(100,116,139,0.3);
-  border-radius: 6px;
-}
-
-.map-nav-pills-left {
-  left: 0;
-  align-items: flex-start;
-}
-
-.map-nav-pills-right {
-  right: 0;
-  align-items: flex-end;
-}
-
-.map-nav-pill {
-  background-color: white;
-  border: 1px solid rgba(100,116,139,0.2);
-  border-radius: 20px;
-  padding: 6px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  color: rgb(71, 85, 105);
-  cursor: pointer;
-  white-space: nowrap;
-  text-align: center;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  transition: all 0.2s ease, opacity 0.2s ease-out;
-  opacity: 0.85; /* Default opacity for visibility */
-  transform: translateX(0);
-}
-
-.map-nav-pills-left .map-nav-pill {
-  transform: translateX(-5px);
-  animation: slideInFromLeft 0.5s ease forwards;
-  animation-delay: calc(var(--delay, 0) * 50ms);
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-}
-
-.map-nav-pills-right .map-nav-pill {
-  transform: translateX(5px);
-  animation: slideInFromRight 0.5s ease forwards;
-  animation-delay: calc(var(--delay, 0) * 50ms);
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-}
-
-@keyframes slideInFromLeft {
-  to { transform: translateX(0); opacity: 0.85; }
-}
-
-@keyframes slideInFromRight {
-  to { transform: translateX(0); opacity: 0.85; }
-}
-
-.map-nav-pill:hover {
-  background-color: rgb(248, 250, 252);
-  border-color: rgba(100,116,139,0.4);
-  opacity: 1;
-  transform: translateY(-1px);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.map-nav-pill.active {
-  background-color: rgb(236, 253, 245);
-  border-color: rgb(16, 185, 129);
-  color: rgb(6, 95, 70);
-  opacity: 1 !important; /* Ensure active pill is always visible */
-  font-weight: 500;
-  box-shadow: 0 2px 5px rgba(16, 185, 129, 0.2);
-}
-
-/* Pulse animation for map navigation */
-@keyframes mapPulse {
-  0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-}
-
-.map-pulse {
-  animation: mapPulse 1.5s ease-out;
-}
-
-/* Map state classes that can be targeted for transition effects */
-body.map-navigating .map-nav-pill.active {
-  animation: mapPulse 1.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-  opacity: 1 !important; /* Ensure active pill stays visible */
-}
-
-/* Make sure all pills remain visible during navigation */
-body.map-navigating .map-nav-pill {
-  opacity: 0.85;
-}
-
-/* Animation state class for initial loading */
-.animating-in {
-  opacity: 0;
-}
-
-body.map-interaction {
-  cursor: pointer;
-}
-
-/* Responsive adjustments for map pills */
-@media (max-width: 768px) {
-  .map-nav-pills {
-    padding: 5px;
-  }
-  
-  .map-nav-pill {
-    padding: 4px 12px;
-    font-size: 10px;
-  }
-}
+/* Map caption box adjustments for the home page map */
 
 /* Enhanced stat cards */
 .stat-card {
@@ -1205,8 +1064,8 @@ html:not(.astro-transition-fallback) .projects-container {
 /* Footer styling */
 .site-footer {
   background-color: var(--apple-background);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  padding: 4rem 0 2rem;
+  border-top: none;
+  padding: 2rem 0 2rem; /* Reduced top padding, kept bottom */
   color: var(--text-primary);
 }
 

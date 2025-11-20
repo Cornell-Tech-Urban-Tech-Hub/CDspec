@@ -1,12 +1,11 @@
 import * as turf from '@turf/turf';
 
 /**
- * Creates perimeter features from CD polygons
+ * Creates perimeter features from CD polygons without buffering
  * @param {object} geojsonData - The GeoJSON data containing CD features
  * @returns {Array} Array of perimeter features
  */
 export function createCdPerimeters(geojsonData) {
-  // Check for valid input data
   if (!geojsonData || !Array.isArray(geojsonData.features)) {
     console.error("Invalid GeoJSON data structure");
     return [];
@@ -14,7 +13,6 @@ export function createCdPerimeters(geojsonData) {
   
   const cdFeatureGroups = {};
   
-  // Group features by CD code
   geojsonData.features.forEach(feature => {
     if (!feature || !feature.properties) return;
     
@@ -29,43 +27,21 @@ export function createCdPerimeters(geojsonData) {
   
   const perimeters = [];
   
-  // Process each CD group
   Object.entries(cdFeatureGroups).forEach(([cdCode, features]) => {
     try {
       if (!features || features.length === 0) return;
       
-      // Skip if first feature is invalid
-      if (!features[0] || !features[0].geometry) {
-        console.warn(`Invalid feature for CD ${cdCode}`);
-        return;
-      }
-      
-      // Process each feature with error handling
-      const validFeatures = features.filter(f => f && f.geometry);
-      if (validFeatures.length === 0) return;
-      
-      const bufferedFeatures = validFeatures.map(feature => {
+      // Just union the raw features directly without buffering
+      // This is significantly faster and cleaner
+      let combined = features[0];
+      for (let i = 1; i < features.length; i++) {
         try {
-          return turf.buffer(feature, 0.015, {units: 'kilometers'});
-        } catch (err) {
-          console.warn(`Error buffering feature for CD ${cdCode}:`, err);
-          return null;
-        }
-      }).filter(Boolean);
-      
-      if (bufferedFeatures.length === 0) return;
-      
-      let combined = bufferedFeatures[0];
-      for (let i = 1; i < bufferedFeatures.length; i++) {
-        try {
-          combined = turf.union(combined, bufferedFeatures[i]);
+          combined = turf.union(combined, features[i]);
         } catch (err) {
           console.warn(`Error unioning features for CD ${cdCode}:`, err);
-          // Continue with current combined shape
         }
       }
       
-      // Only proceed if combined is valid
       if (!combined || !combined.geometry) return;
       
       let perimeterFeature;
@@ -86,7 +62,7 @@ export function createCdPerimeters(geojsonData) {
           });
           perimeterFeature = turf.multiLineString(lines.map(l => l.geometry.coordinates));
         } else {
-          return; // Unsupported geometry type
+          return;
         }
         
         perimeterFeature.properties = { cdCode };
@@ -128,11 +104,9 @@ export function createCdPolygons(geojsonData) {
   
   Object.entries(cdFeatureGroups).forEach(([cdCode, features]) => {
     try {
-      const bufferedFeatures = features.map(feature => turf.buffer(feature, 0.015, {units: 'kilometers'}));
-      
-      let combined = bufferedFeatures[0];
-      for (let i = 1; i < bufferedFeatures.length; i++) {
-        combined = turf.union(combined, bufferedFeatures[i]);
+      let combined = features[0];
+      for (let i = 1; i < features.length; i++) {
+        combined = turf.union(combined, features[i]);
       }
       
       combined.properties = { cdCode };
