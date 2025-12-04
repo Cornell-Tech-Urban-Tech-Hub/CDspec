@@ -315,7 +315,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
       const map = new maplibregl.Map({
           container: mapLibreId,
           style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-          center: [-74.0060, 40.7128],
+          center: [-74.0060, 40.61],
           zoom: initialZoom,
           pitch: 45,
           bearing: -15,
