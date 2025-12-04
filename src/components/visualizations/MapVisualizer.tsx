@@ -3,7 +3,7 @@ const { useState, useEffect, useRef, useMemo, useCallback } = React;
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapProvider, useMapContext } from './MapContext';
 import mapCleanupManager from '../../utils/mapCleanup';
-import { createCdPerimeters, calculateBoundingBox } from '../../utils/mapUtils';
+import { calculateBoundingBox } from '../../utils/mapUtils';
 import mapEventManager from '../../utils/mapEvents';
 import * as turf from '@turf/turf';
 const center = turf.center;
@@ -101,30 +101,55 @@ export default function MapVisualizer({
       <div className="relative h-full w-full overflow-hidden rounded-lg">
         <style>{`
           .map-billboard-marker {
-            transition: opacity 0.15s ease-out;
+            transition: opacity 0.25s cubic-bezier(0.4, 0, 0.2, 1),
+                        transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            transform-origin: bottom center;
+          }
+          .map-billboard-marker[style*="opacity: 0"] {
+            transform: scale(0.9) translateY(4px);
+          }
+          .map-billboard-marker[style*="opacity: 1"] {
+            transform: scale(1) translateY(0);
           }
           .tooltip-content {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(8px);
-            padding: 8px 12px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            border: 1px solid #e5e7eb;
-            contain: layout style paint;
+            background: rgba(255, 255, 255, 0.97);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 10px 14px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12),
+                        0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(229, 231, 235, 0.8);
+            animation: tooltipFadeIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          }
+          @keyframes tooltipFadeIn {
+            from {
+              opacity: 0.5;
+              transform: scale(0.96);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
           }
           .tooltip-content.active {
-            border-color: #10b981;
+            border-color: rgba(16, 185, 129, 0.6);
+            box-shadow: 0 8px 32px rgba(16, 185, 129, 0.15),
+                        0 2px 8px rgba(0, 0, 0, 0.08);
           }
           .tooltip-content h3 {
             font-size: 14px;
             font-weight: 700;
             color: #111827;
-            margin: 0 0 2px 0;
+            margin: 0 0 4px 0;
             line-height: 1.2;
           }
           .tooltip-content span {
             font-size: 12px;
             color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 4px;
           }
           .tooltip-content.active span {
             color: #10b981;
@@ -133,16 +158,24 @@ export default function MapVisualizer({
           .tooltip-arrow {
             width: 0;
             height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-top: 8px solid white;
+            border-left: 8px solid transparent;
+            border-right: 8px solid transparent;
+            border-top: 10px solid rgba(255, 255, 255, 0.97);
             margin: -1px auto 0 auto;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.06));
           }
           .tooltip-arrow.active {
-            border-top-color: #10b981;
+            border-top-color: rgba(16, 185, 129, 0.9);
           }
           .maplibregl-canvas {
             outline: none !important;
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+          }
+          /* Prevent flickering during animations */
+          .maplibregl-map {
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
           }
         `}</style>
         {/* Loading State */}
@@ -209,6 +242,9 @@ const DeckGLMap = React.memo(function DeckGLMap({
   const markerElRef = useRef<HTMLDivElement | null>(null);
   const lastHoveredCDRef = useRef<string | null>(null);
   
+  // Track if map is moving to disable transitions during zoom/pan
+  const isMovingRef = useRef<boolean>(false);
+  
   // Store layers in ref to access them in callbacks without triggering renders
   const baseLayersRef = useRef<any[]>([]);
   
@@ -217,18 +253,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
     return new Set(projectCDs.map(cd => String(cd).trim()));
   }, [projectCDs]);
 
-  // 1. Separate Geometry Calculation
-  const cdPerimeters = useMemo(() => {
-    if (!geojsonData || !geojsonData.features) return [];
-    try {
-        return createCdPerimeters(geojsonData);
-    } catch (e) {
-        console.error("Error generating map geometry:", e);
-        return [];
-    }
-  }, [geojsonData]);
-
-  // 2. MERGED FEATURES (Optimize Picking Performance)
+  // MERGED FEATURES (Optimize Picking Performance)
   // Instead of two layers, we prepare one dataset with an "isActive" property
   const mergedFeatures = useMemo(() => {
     if (!geojsonData || !geojsonData.features) return [];
@@ -270,6 +295,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
 
       if (!geojsonData) {
          try {
+            // Use original geometry for clean perimeter rendering
             const res = await fetch(`/data/cds_nyc.geojson`);
             if (res.ok) {
               const data = await res.json();
@@ -295,12 +321,12 @@ const DeckGLMap = React.memo(function DeckGLMap({
           bearing: -15,
           minZoom: 10,
           maxZoom: 16,
-          antialias: false, // Performance: Disable antialiasing for smoother interaction
-          fadeDuration: 0, // Performance: Instant tile transitions
+          antialias: true, // Smooth edges on 3D extrusions
+          fadeDuration: 100, // Smooth tile transitions during zoom
           trackResize: true,
-          renderWorldCopies: false, // Performance: Don't render world copies
-          preserveDrawingBuffer: false, // Performance: Don't preserve buffer
-          refreshExpiredTiles: false, // Performance: Reduce tile refresh
+          renderWorldCopies: false,
+          preserveDrawingBuffer: false,
+          pixelRatio: window.devicePixelRatio, // Use native pixel ratio for sharp rendering
       } as any);
 
       currentMapRef.current = map;
@@ -339,11 +365,17 @@ const DeckGLMap = React.memo(function DeckGLMap({
 
 
       map.on('load', () => {
+          // Outline layer is added via separate effect (6b) for proper reactivity
           if (!isCancelled && onMapLoaded) onMapLoaded();
       });
       
-      // Performance: Use 'moveend' instead of 'move' for less frequent updates
+      // Track map movement for transition control
+      map.on('movestart', () => {
+         isMovingRef.current = true;
+      });
+      
       map.on('moveend', () => {
+         isMovingRef.current = false;
          if (onZoomChange) onZoomChange(map.getZoom());
       });
 
@@ -394,7 +426,6 @@ const DeckGLMap = React.memo(function DeckGLMap({
         if (lastHoveredCDRef.current !== null) {
             el.style.opacity = '0';
             lastHoveredCDRef.current = null;
-            // Reset cursor
             if (canvas) canvas.style.cursor = 'grab';
         }
         return;
@@ -431,9 +462,12 @@ const DeckGLMap = React.memo(function DeckGLMap({
     el.innerHTML = `
       <div class="tooltip-content ${hasProject ? 'active' : ''}">
         <h3>${cdCode || 'District'}</h3>
-        <span>${hasProject ? '● Active Project' : 'No active project'}</span>
+        <span>${hasProject 
+          ? '<span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span> View Project' 
+          : 'No active project'}</span>
       </div>
       <div class="tooltip-arrow ${hasProject ? 'active' : ''}"></div>
+      <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}</style>
     `;
 
   }, []);
@@ -444,86 +478,54 @@ const DeckGLMap = React.memo(function DeckGLMap({
     [updateTooltipCore]
   );
 
-  // 6. Base Layers Update - OPTIMIZED for performance
+  // 6. Base Layers Update - with smooth hover transitions
   useEffect(() => {
       if (!currentMapRef.current || !geojsonData) return;
       
       const layerPrefix = `${mapId}-layers`;
       
-      // Performance: Pre-compute colors as typed arrays for GPU efficiency
-      const activeColor: [number, number, number, number] = [16, 185, 129, 20];
-      const inactiveColor: [number, number, number, number] = [0, 0, 0, 0];
-      const activeLineColor: [number, number, number, number] = [16, 185, 129, 200];
-      const inactiveLineColor: [number, number, number, number] = [156, 163, 175, 100];
-      
-      const commonProps = {
-        pickable: true,
-        stroked: true,
-        filled: true,
-        extruded: true,
-        wireframe: false, // Performance: Disable wireframe
-        lineWidthScale: 1,
-        lineWidthMinPixels: 1,
-        // Pre-computed colors for faster access
-        getFillColor: ((d: any) => d.properties.isActive ? activeColor : inactiveColor) as any,
-        getLineColor: ((d: any) => d.properties.isActive ? activeLineColor : inactiveLineColor) as any,
-        getElevation: ((d: any) => d.properties.isActive ? 100 : 0) as any,
-        autoHighlight: true,
-        highlightColor: [16, 185, 129, 50] as [number, number, number, number],
-        // Performance: Picking optimization
-        pickingRadius: 2, // Smaller radius = faster picking
-        parameters: { 
-          depthTest: true,
-          blend: true,
-        },
-        onClick: handleLayerClick,
-        onHover: updateTooltip,
-        updateTriggers: {
-            getLineColor: [projectCDs],
-            getFillColor: [projectCDs],
-            getElevation: [projectCDs]
-        }
-      };
-
       const layers = [];
 
-      // Combined Layer for better Picking Performance (1 pass instead of 2)
+      // Deck.gl 3D fills - render AFTER roads/buildings, BEFORE text labels
+      // Using 'watername_ocean' as beforeId (first text label after all geometry in Carto Positron)
+      // Outlines handled by native MapLibre layer (see effect 6b)
+      
       if (mergedFeatures.length > 0) {
           layers.push(new GeoJsonLayer({
-              ...commonProps,
-              id: `${layerPrefix}-merged`,
+              id: `${layerPrefix}-fills`,
               data: mergedFeatures,
-              // Performance: Material settings for simpler rendering
+              beforeId: 'watername_ocean',  // First text label after all geometry
+              pickable: true,
+              stroked: false,
+              filled: true,
+              extruded: true,
+              wireframe: false,
+              getFillColor: ((d: any) => 
+                d.properties.isActive 
+                  ? [16, 185, 129, 50]
+                  : [200, 200, 200, 25]
+              ) as any,
+              getElevation: ((d: any) => d.properties.isActive ? 100 : 0) as any,
+              elevationScale: 1,
+              autoHighlight: true,
+              highlightColor: [16, 185, 129, 70],
+              pickingRadius: 3,
               material: {
-                ambient: 0.5,
-                diffuse: 0.5,
+                ambient: 0.7,
+                diffuse: 0.6,
                 shininess: 0,
                 specularColor: [0, 0, 0]
-              }
-          }));
-      }
-
-      // Outlines (Not pickable) - simplified
-      if (cdPerimeters.length > 0) {
-          layers.push(new GeoJsonLayer({
-              id: `${layerPrefix}-outlines`,
-              data: cdPerimeters,
-              pickable: false,
-              stroked: true,
-              filled: false,
-              lineWidthUnits: 'pixels',
-              getLineColor: (d: any) => {
-                 const cd = d.properties?.cdCode;
-                 return projectCDsSet.has(cd) ? [16, 185, 129, 255] : [100, 100, 100, 100];
               },
-              getLineWidth: (d: any) => {
-                  const cd = d.properties?.cdCode;
-                  return projectCDsSet.has(cd) ? 3 : 1;
+              parameters: { 
+                depthTest: true,
+                depthMask: true,
+                blend: true,
               },
-              parameters: { depthTest: false },
+              onClick: handleLayerClick,
+              onHover: updateTooltip,
               updateTriggers: {
-                  getLineColor: [projectCDs],
-                  getLineWidth: [projectCDs]
+                  getFillColor: [projectCDs],
+                  getElevation: [projectCDs]
               }
           }));
       }
@@ -533,10 +535,9 @@ const DeckGLMap = React.memo(function DeckGLMap({
       // Initial overlay setup or update
       if (!currentOverlayRef.current) {
           const overlay = new MapboxOverlay({ 
-              interleaved: true, 
+              interleaved: true,  // Interleaved so beforeId works for label ordering
               layers,
-              // Performance: Reduce picking overhead
-              _pickable: true,
+              useDevicePixels: true,
           });
           currentOverlayRef.current = overlay;
           currentMapRef.current.addControl(overlay);
@@ -544,7 +545,53 @@ const DeckGLMap = React.memo(function DeckGLMap({
       } else {
           currentOverlayRef.current.setProps({ layers });
       }
-  }, [mergedFeatures, cdPerimeters, projectCDsSet, handleLayerClick, updateTooltip]);
+  }, [mergedFeatures, projectCDsSet, handleLayerClick, updateTooltip]);
+
+  // 6b. Create/update native MapLibre outline layer (above roads, below text labels)
+  useEffect(() => {
+      const map = currentMapRef.current;
+      if (!map || !geojsonData) return;
+      
+      const addOutlineLayer = () => {
+          // Remove existing layer/source if present
+          if (map.getLayer('cd-outlines')) {
+              map.removeLayer('cd-outlines');
+          }
+          if (map.getSource('cd-boundaries')) {
+              map.removeSource('cd-boundaries');
+          }
+          
+          // Add source
+          map.addSource('cd-boundaries', {
+              type: 'geojson',
+              data: geojsonData
+          });
+          
+          // Add outline layer - positioned BEFORE 'watername_ocean' (first text label)
+          // This puts it: after roads/buildings, before all text labels
+          map.addLayer({
+              id: 'cd-outlines',
+              type: 'line',
+              source: 'cd-boundaries',
+              paint: {
+                  'line-color': [
+                      'case',
+                      ['in', ['get', 'BoroCD'], ['literal', projectCDs]],
+                      '#10b981',
+                      '#666666'
+                  ],
+                  'line-width': 2,
+                  'line-opacity': 1
+              }
+          }, 'watername_ocean');  // Same as deck.gl beforeId
+      };
+      
+      if (map.isStyleLoaded()) {
+          addOutlineLayer();
+      } else {
+          map.once('style.load', addOutlineLayer);
+      }
+  }, [geojsonData, projectCDs]);
 
   // 7. Navigation Handler
   useEffect(() => {
