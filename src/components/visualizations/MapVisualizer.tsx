@@ -13,6 +13,28 @@ import { GeoJsonLayer } from '@deck.gl/layers';
 import { MapboxOverlay } from '@deck.gl/mapbox';
 import maplibregl from 'maplibre-gl';
 
+// Performance: Throttle function for hover events
+function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T {
+  let inThrottle = false;
+  let lastArgs: Parameters<T> | null = null;
+  
+  return ((...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => {
+        inThrottle = false;
+        if (lastArgs) {
+          func(...lastArgs);
+          lastArgs = null;
+        }
+      }, limit);
+    } else {
+      lastArgs = args;
+    }
+  }) as T;
+}
+
 // Type declarations for window extensions
 declare global {
   interface Window {
@@ -79,7 +101,48 @@ export default function MapVisualizer({
       <div className="relative h-full w-full overflow-hidden rounded-lg">
         <style>{`
           .map-billboard-marker {
-            transition: opacity 0.2s ease-out;
+            transition: opacity 0.15s ease-out;
+          }
+          .tooltip-content {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            border: 1px solid #e5e7eb;
+            contain: layout style paint;
+          }
+          .tooltip-content.active {
+            border-color: #10b981;
+          }
+          .tooltip-content h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+            margin: 0 0 2px 0;
+            line-height: 1.2;
+          }
+          .tooltip-content span {
+            font-size: 12px;
+            color: #6b7280;
+          }
+          .tooltip-content.active span {
+            color: #10b981;
+            font-weight: 500;
+          }
+          .tooltip-arrow {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-top: 8px solid white;
+            margin: -1px auto 0 auto;
+          }
+          .tooltip-arrow.active {
+            border-top-color: #10b981;
+          }
+          .maplibregl-canvas {
+            outline: none !important;
           }
         `}</style>
         {/* Loading State */}
@@ -140,15 +203,11 @@ const DeckGLMap = React.memo(function DeckGLMap({
     setDeckOverlay
   } = useMapContext();
 
-  const isMounted = useRef(true);
   const currentMapRef = useRef<any>(null);
   const currentOverlayRef = useRef<any>(null);
   const markerRef = useRef<any>(null); 
   const markerElRef = useRef<HTMLDivElement | null>(null);
   const lastHoveredCDRef = useRef<string | null>(null);
-  const animationRef = useRef<number | null>(null);
-  const targetPosRef = useRef<[number, number] | null>(null);
-  const currentPosRef = useRef<[number, number] | null>(null);
   
   // Store layers in ref to access them in callbacks without triggering renders
   const baseLayersRef = useRef<any[]>([]);
@@ -236,7 +295,12 @@ const DeckGLMap = React.memo(function DeckGLMap({
           bearing: -15,
           minZoom: 10,
           maxZoom: 16,
-          antialias: true
+          antialias: false, // Performance: Disable antialiasing for smoother interaction
+          fadeDuration: 0, // Performance: Instant tile transitions
+          trackResize: true,
+          renderWorldCopies: false, // Performance: Don't render world copies
+          preserveDrawingBuffer: false, // Performance: Don't preserve buffer
+          refreshExpiredTiles: false, // Performance: Reduce tile refresh
       } as any);
 
       currentMapRef.current = map;
@@ -249,13 +313,18 @@ const DeckGLMap = React.memo(function DeckGLMap({
         showZoom: true
       }), 'top-right');
 
-      // Initialize Persistent Marker
+      // Initialize Persistent Marker with GPU-accelerated CSS
       const el = document.createElement('div');
       el.className = 'map-billboard-marker';
-      el.style.pointerEvents = 'none';
-      el.style.willChange = 'transform, opacity';
-      el.style.opacity = '0'; // Start hidden
-      el.style.paddingBottom = '20px'; // Persistent style
+      el.style.cssText = `
+        pointer-events: none;
+        will-change: transform;
+        transform: translateZ(0);
+        backface-visibility: hidden;
+        opacity: 0;
+        padding-bottom: 20px;
+        contain: layout style paint;
+      `;
       markerElRef.current = el;
 
       // Create marker immediately and keep it alive
@@ -273,13 +342,13 @@ const DeckGLMap = React.memo(function DeckGLMap({
           if (!isCancelled && onMapLoaded) onMapLoaded();
       });
       
-      map.on('move', () => {
+      // Performance: Use 'moveend' instead of 'move' for less frequent updates
+      map.on('moveend', () => {
          if (onZoomChange) onZoomChange(map.getZoom());
       });
 
       return () => {
         isCancelled = true;
-        if (animationRef.current) cancelAnimationFrame(animationRef.current);
         if (markerRef.current) markerRef.current.remove();
         if (currentMapRef.current) {
              currentMapRef.current.remove();
@@ -308,122 +377,105 @@ const DeckGLMap = React.memo(function DeckGLMap({
     }
   }, [projectCDsSet, CDToSlugMap]);
 
-  // 5. Imperative Hover Handler
-  const updateTooltip = useCallback((info: any) => {
+  // 5. Imperative Hover Handler - OPTIMIZED for instant response
+  const updateTooltipCore = useCallback((info: any) => {
     const map = currentMapRef.current;
     if (!map) return;
 
     const hoveredObject = info.object;
     const el = markerElRef.current;
     const marker = markerRef.current;
+    const canvas = map.getCanvas();
 
     if (!el || !marker) return;
 
-    // --- Tooltip/Billboard Update ---
+    // --- Hide tooltip when not hovering ---
     if (!hoveredObject) {
         if (lastHoveredCDRef.current !== null) {
-            // Just hide it, don't destroy it
             el.style.opacity = '0';
             lastHoveredCDRef.current = null;
-            targetPosRef.current = null;
+            // Reset cursor
+            if (canvas) canvas.style.cursor = 'grab';
         }
         return;
     }
 
     const cdCode = hoveredObject.properties?.cdCode;
+    const hasProject = hoveredObject.properties?.isActive;
     
-    // If same CD, skip updates entirely
+    // Update cursor immediately for better feedback
+    if (canvas) {
+        canvas.style.cursor = hasProject ? 'pointer' : 'grab';
+    }
+    
+    // If same CD, skip DOM updates (critical optimization)
     if (lastHoveredCDRef.current === cdCode) return;
     
     lastHoveredCDRef.current = cdCode;
-    const hasProject = hoveredObject.properties?.isActive; // Use pre-calculated prop
 
+    // Get position - prefer pre-calculated centroid, fallback to click coords
     let targetPos: [number, number] | null = null;
-    // 1. Try pre-calculated centroid
     if (hoveredObject.properties?.centroid) {
         targetPos = hoveredObject.properties.centroid;
-    } 
-    // 2. Use event coordinate if available (instant)
-    else if (info.coordinate) {
+    } else if (info.coordinate) {
         targetPos = [info.coordinate[0], info.coordinate[1]];
     }
     
     if (!targetPos) return;
 
-    // Show marker (if it was hidden)
+    // INSTANT positioning - no animation lag
+    marker.setLngLat(targetPos);
     el.style.opacity = '1';
 
-    // Efficient DOM Update
+    // Optimized DOM Update - minimal reflow
     el.innerHTML = `
-      <div class="bg-white/95 backdrop-blur-sm px-3 py-2 rounded-lg shadow-lg border ${hasProject ? 'border-emerald-500' : 'border-gray-200'} transform transition-all duration-200">
-        <h3 class="text-sm font-bold text-gray-900 mb-0.5">${cdCode || 'District'}</h3>
-        ${hasProject 
-          ? '<span class="text-xs font-medium text-emerald-600 flex items-center gap-1">● Active Project</span>' 
-          : '<span class="text-xs text-gray-500">No active project</span>'}
+      <div class="tooltip-content ${hasProject ? 'active' : ''}">
+        <h3>${cdCode || 'District'}</h3>
+        <span>${hasProject ? '● Active Project' : 'No active project'}</span>
       </div>
-      <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[8px] ${hasProject ? 'border-t-emerald-500' : 'border-t-white'} mx-auto mt-[-1px]"></div>
+      <div class="tooltip-arrow ${hasProject ? 'active' : ''}"></div>
     `;
 
-    // Initialize or Update Marker Position
-    targetPosRef.current = targetPos;
-    
-    // If this is the first show after being hidden, snap to position immediately
-    if (!currentPosRef.current) {
-        currentPosRef.current = targetPos;
-        marker.setLngLat(targetPos);
-    }
+  }, []);
 
-    // C. Glide Animation Loop
-    // Optimization: Increased speed factor from 0.25 to 0.6 for snappier feel
-    if (!animationRef.current) {
-        const animate = () => {
-            if (!targetPosRef.current || !currentPosRef.current) {
-                animationRef.current = null;
-                return;
-            }
-            
-            // FASTER INTERPOLATION (0.6 instead of 0.25)
-            const speed = 0.6;
-            const lng = currentPosRef.current[0] + (targetPosRef.current[0] - currentPosRef.current[0]) * speed;
-            const lat = currentPosRef.current[1] + (targetPosRef.current[1] - currentPosRef.current[1]) * speed;
-            
-            currentPosRef.current = [lng, lat];
-            marker.setLngLat(currentPosRef.current);
+  // Throttled version for hover events (16ms = ~60fps max)
+  const updateTooltip = useMemo(
+    () => throttle(updateTooltipCore, 16),
+    [updateTooltipCore]
+  );
 
-            const distSq = Math.pow(targetPosRef.current[0] - lng, 2) + Math.pow(targetPosRef.current[1] - lat, 2);
-            if (distSq > 0.000000001) {
-                animationRef.current = requestAnimationFrame(animate);
-            } else {
-                marker.setLngLat(targetPosRef.current);
-                currentPosRef.current = targetPosRef.current;
-                animationRef.current = null; 
-            }
-        };
-        animationRef.current = requestAnimationFrame(animate);
-    }
-
-  }, [projectCDsSet]);
-
-  // 6. Base Layers Update
+  // 6. Base Layers Update - OPTIMIZED for performance
   useEffect(() => {
       if (!currentMapRef.current || !geojsonData) return;
       
       const layerPrefix = `${mapId}-layers`;
+      
+      // Performance: Pre-compute colors as typed arrays for GPU efficiency
+      const activeColor: [number, number, number, number] = [16, 185, 129, 20];
+      const inactiveColor: [number, number, number, number] = [0, 0, 0, 0];
+      const activeLineColor: [number, number, number, number] = [16, 185, 129, 200];
+      const inactiveLineColor: [number, number, number, number] = [156, 163, 175, 100];
+      
       const commonProps = {
         pickable: true,
         stroked: true,
         filled: true,
         extruded: true,
-        wireframe: true,
+        wireframe: false, // Performance: Disable wireframe
         lineWidthScale: 1,
         lineWidthMinPixels: 1,
-        // Data-driven styling instead of separate layers
-        getFillColor: ((d: any) => d.properties.isActive ? [16, 185, 129, 20] : [0,0,0,0]) as any,
-        getLineColor: ((d: any) => d.properties.isActive ? [16, 185, 129, 200] : [156, 163, 175, 100]) as any,
+        // Pre-computed colors for faster access
+        getFillColor: ((d: any) => d.properties.isActive ? activeColor : inactiveColor) as any,
+        getLineColor: ((d: any) => d.properties.isActive ? activeLineColor : inactiveLineColor) as any,
         getElevation: ((d: any) => d.properties.isActive ? 100 : 0) as any,
-        autoHighlight: true, // GPU Highlight
-        highlightColor: [16, 185, 129, 50],
-        parameters: { depthTest: true },
+        autoHighlight: true,
+        highlightColor: [16, 185, 129, 50] as [number, number, number, number],
+        // Performance: Picking optimization
+        pickingRadius: 2, // Smaller radius = faster picking
+        parameters: { 
+          depthTest: true,
+          blend: true,
+        },
         onClick: handleLayerClick,
         onHover: updateTooltip,
         updateTriggers: {
@@ -441,10 +493,17 @@ const DeckGLMap = React.memo(function DeckGLMap({
               ...commonProps,
               id: `${layerPrefix}-merged`,
               data: mergedFeatures,
+              // Performance: Material settings for simpler rendering
+              material: {
+                ambient: 0.5,
+                diffuse: 0.5,
+                shininess: 0,
+                specularColor: [0, 0, 0]
+              }
           }));
       }
 
-      // Outlines (Not pickable)
+      // Outlines (Not pickable) - simplified
       if (cdPerimeters.length > 0) {
           layers.push(new GeoJsonLayer({
               id: `${layerPrefix}-outlines`,
@@ -461,7 +520,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
                   const cd = d.properties?.cdCode;
                   return projectCDsSet.has(cd) ? 3 : 1;
               },
-              parameters: { depthTest: false, zIndex: 10 },
+              parameters: { depthTest: false },
               updateTriggers: {
                   getLineColor: [projectCDs],
                   getLineWidth: [projectCDs]
@@ -469,14 +528,15 @@ const DeckGLMap = React.memo(function DeckGLMap({
           }));
       }
 
-      // Update ref so tooltip handler can access base layers
       baseLayersRef.current = layers;
 
       // Initial overlay setup or update
       if (!currentOverlayRef.current) {
           const overlay = new MapboxOverlay({ 
               interleaved: true, 
-              layers 
+              layers,
+              // Performance: Reduce picking overhead
+              _pickable: true,
           });
           currentOverlayRef.current = overlay;
           currentMapRef.current.addControl(overlay);
