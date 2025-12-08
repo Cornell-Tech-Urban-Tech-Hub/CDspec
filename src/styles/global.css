@@ -495,11 +495,11 @@ main > section:first-child.header-offset {
 
 /* Ensure the home map takes full available height */
 #home-map-container {
-  height: 100% !important;
+  height: 75vh !important;
 }
 
 #home-map-container .mapboxgl-canvas {
-  height: 100% !important;
+  height: 75vh !important;
 }
 
 /* Map caption box adjustments for the home page map */

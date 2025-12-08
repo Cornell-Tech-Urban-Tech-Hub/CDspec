@@ -241,6 +241,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
   const markerRef = useRef<any>(null); 
   const markerElRef = useRef<HTMLDivElement | null>(null);
   const lastHoveredCDRef = useRef<string | null>(null);
+  const [styleReady, setStyleReady] = useState(false);
   
   // Track if map is moving to disable transitions during zoom/pan
   const isMovingRef = useRef<boolean>(false);
@@ -290,6 +291,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
 
     const initMap = async () => {
       if (isCancelled) return;
+      setStyleReady(false);
       const mapContainer = document.getElementById(mapContainerId);
       if (!mapContainer || currentMapRef.current) return;
 
@@ -312,10 +314,55 @@ const DeckGLMap = React.memo(function DeckGLMap({
       mapDiv.style.height = '100%';
       mapContainer.appendChild(mapDiv);
 
+      const arcgisService =
+        'https://tiles.arcgis.com/tiles/yG5s3afENB5iO9fj/arcgis/rest/services/NYC_Basemap_v3/VectorTileServer';
+      const arcgisStyleUrl = `${arcgisService}/resources/styles/root.json`;
+      const useArcGIS = true; // lock to ArcGIS basemap (Carto disabled)
+
+      const loadArcgisStyle = async () => {
+        const res = await fetch(arcgisStyleUrl, { mode: 'cors' });
+        if (!res.ok) {
+          throw new Error(`ArcGIS style fetch failed: ${res.status}`);
+        }
+        const style = await res.json();
+
+        const styleBase = new URL('./', arcgisStyleUrl).toString();
+
+        // Normalize sprite/glyph paths to absolute URLs
+        // Normalize sprite/glyphs to absolute URLs, preserving MapLibre tokens
+        style.sprite = `${arcgisService}/resources/sprites/sprite`;
+        style.glyphs = `${arcgisService}/resources/fonts/{fontstack}/{range}.pbf`;
+
+        // Normalize vector tiles/urls to absolute URLs
+        if (style.sources) {
+          Object.values(style.sources).forEach((source: any) => {
+            if (source?.type === 'vector') {
+              // Force tiles to the VectorTileServer endpoint and drop url to avoid non-TileJSON fetch
+              source.tiles = [`${arcgisService}/tile/{z}/{y}/{x}.pbf`];
+              if (source.url) delete source.url;
+            }
+          });
+        }
+        return style;
+      };
+
+      let normalizedStyle: any = null;
+      if (useArcGIS) {
+        try {
+          normalizedStyle = await loadArcgisStyle();
+        } catch (err) {
+          console.error('ArcGIS style load failed; map not initialized', err);
+          return;
+        }
+      }
+
+      console.info('ArcGIS style (normalized) sprite:', normalizedStyle?.sprite, 'glyphs:', normalizedStyle?.glyphs);
+
       const map = new maplibregl.Map({
           container: mapLibreId,
-          style: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
-          center: [-74.0060, 40.61],
+          // NYC Human Geography basemap (ArcGIS) — Carto disabled
+          style: normalizedStyle,
+          center: [-74.0060, 40.63],
           zoom: initialZoom,
           pitch: 45,
           bearing: -15,
@@ -327,7 +374,57 @@ const DeckGLMap = React.memo(function DeckGLMap({
           renderWorldCopies: false,
           preserveDrawingBuffer: false,
           pixelRatio: window.devicePixelRatio, // Use native pixel ratio for sharp rendering
+          validate: false, // allow relative sprite/glyph paths in style
       } as any);
+      (window as any).__lastMap = map;
+
+      const updateStyleReady = () => {
+        if (!isCancelled && map.isStyleLoaded()) setStyleReady(true);
+      };
+      map.on('styledata', updateStyleReady);
+
+      // Restrict place labels to NYC (hide NJ/LI) only when using Carto basemap
+      if (!useArcGIS) {
+        const clampPlaceLabelsToNYC = () => {
+          const style = map.getStyle();
+          if (!style?.layers) return;
+
+          const boroughWhitelist = ['Manhattan', 'Brooklyn', 'Queens', 'The Bronx', 'Bronx', 'Staten Island', 'New York'];
+          const nycCondition: any = [
+            'any',
+            ['==', ['get', 'state_code'], 'NY'],
+            ['==', ['get', 'region_code'], 'NY'],
+            ['==', ['get', 'state'], 'New York'],
+            ['==', ['get', 'iso_3166_2'], 'US-NY'],
+            ['in', ['get', 'name'], ['literal', boroughWhitelist]],
+          ];
+
+          style.layers.forEach((layer: any) => {
+            // Carto Positron place label layers include "place" in the id
+            if (layer.type === 'symbol' && layer.id.toLowerCase().includes('place')) {
+              const existing = map.getFilter(layer.id);
+              const nextFilter = existing ? ['all', existing, nycCondition] : nycCondition;
+              map.setFilter(layer.id, nextFilter as any);
+
+              // Also force opacity to 0 for anything not matching to cover sources without filters
+              map.setPaintProperty(
+                layer.id,
+                'text-opacity',
+                ['case', nycCondition, 1, 0] as any
+              );
+              map.setPaintProperty(
+                layer.id,
+                'text-halo-opacity',
+                ['case', nycCondition, 1, 0] as any
+              );
+            }
+          });
+        };
+
+        // Apply once loaded, and re-apply on any style refresh so labels stay clamped
+        if (map.isStyleLoaded()) clampPlaceLabelsToNYC();
+        map.on('styledata', clampPlaceLabelsToNYC);
+      }
 
       currentMapRef.current = map;
       if (mapId === 'default-map') setMapInstance(map);
@@ -367,6 +464,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
       map.on('load', () => {
           // Outline layer is added via separate effect (6b) for proper reactivity
           if (!isCancelled && onMapLoaded) onMapLoaded();
+          if (!isCancelled) setStyleReady(true);
       });
       
       // Track map movement for transition control
@@ -381,6 +479,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
 
       return () => {
         isCancelled = true;
+        setStyleReady(false);
         if (markerRef.current) markerRef.current.remove();
         if (currentMapRef.current) {
              currentMapRef.current.remove();
@@ -486,15 +585,16 @@ const DeckGLMap = React.memo(function DeckGLMap({
       
       const layers = [];
 
-      // Deck.gl 3D fills - render AFTER roads/buildings, BEFORE text labels
-      // Using 'watername_ocean' as beforeId (first text label after all geometry in Carto Positron)
-      // Outlines handled by native MapLibre layer (see effect 6b)
-      
-      if (mergedFeatures.length > 0) {
+      // Deck.gl 3D fills - position beneath basemap labels
+      const firstLabelId = currentMapRef.current
+        ?.getStyle()
+        ?.layers?.find((l: any) => l.type === 'symbol')?.id;
+
+      if (styleReady && mergedFeatures.length > 0) {
           layers.push(new GeoJsonLayer({
               id: `${layerPrefix}-fills`,
               data: mergedFeatures,
-              beforeId: 'watername_ocean',  // First text label after all geometry
+              beforeId: firstLabelId || undefined,
               pickable: true,
               stroked: false,
               filled: true,
@@ -502,13 +602,13 @@ const DeckGLMap = React.memo(function DeckGLMap({
               wireframe: false,
               getFillColor: ((d: any) => 
                 d.properties.isActive 
-                  ? [16, 185, 129, 50]
-                  : [200, 200, 200, 25]
+                  ? [255, 143, 41, 140]   // bright orange for active
+                  : [140, 140, 140, 70]   // muted gray for inactive
               ) as any,
               getElevation: ((d: any) => d.properties.isActive ? 100 : 0) as any,
               elevationScale: 1,
               autoHighlight: true,
-              highlightColor: [16, 185, 129, 70],
+              highlightColor: [255, 143, 41, 200],
               pickingRadius: 3,
               material: {
                 ambient: 0.7,
@@ -517,8 +617,8 @@ const DeckGLMap = React.memo(function DeckGLMap({
                 specularColor: [0, 0, 0]
               },
               parameters: { 
-                depthTest: true,
-                depthMask: true,
+                depthTest: false, // ensure fills draw above basemap geometry
+                depthMask: false,
                 blend: true,
               },
               onClick: handleLayerClick,
@@ -535,19 +635,21 @@ const DeckGLMap = React.memo(function DeckGLMap({
       // Initial overlay setup or update
       if (!currentOverlayRef.current) {
           const overlay = new MapboxOverlay({ 
-              interleaved: true,  // Interleaved so beforeId works for label ordering
+              // Interleave so beforeId positions below labels
+              interleaved: true,
               layers,
               useDevicePixels: true,
           });
           currentOverlayRef.current = overlay;
+          (window as any).__lastOverlay = overlay;
           currentMapRef.current.addControl(overlay);
           setDeckOverlay(overlay);
       } else {
           currentOverlayRef.current.setProps({ layers });
       }
-  }, [mergedFeatures, projectCDsSet, handleLayerClick, updateTooltip]);
+  }, [mergedFeatures, projectCDsSet, handleLayerClick, updateTooltip, styleReady]);
 
-  // 6b. Create/update native MapLibre outline layer (above roads, below text labels)
+      // 6b. Create/update native MapLibre outline layer (basemap agnostic)
   useEffect(() => {
       const map = currentMapRef.current;
       if (!map || !geojsonData) return;
@@ -566,32 +668,39 @@ const DeckGLMap = React.memo(function DeckGLMap({
               type: 'geojson',
               data: geojsonData
           });
-          
-          // Add outline layer - positioned BEFORE 'watername_ocean' (first text label)
-          // This puts it: after roads/buildings, before all text labels
-          map.addLayer({
+          const firstLabelId = map.getStyle()?.layers?.find((l: any) => l.type === 'symbol')?.id;
+
+          // Add outline layer positioned before first label layer
+          const outlineLayer = {
               id: 'cd-outlines',
               type: 'line',
               source: 'cd-boundaries',
               paint: {
-                  'line-color': [
-                      'case',
-                      ['in', ['get', 'BoroCD'], ['literal', projectCDs]],
-                      '#10b981',
-                      '#666666'
-                  ],
+              'line-color': [
+                  'case',
+                  ['in', ['get', 'BoroCD'], ['literal', projectCDs]],
+                  '#ff8c00',
+                  '#666666'
+              ],
                   'line-width': 2,
                   'line-opacity': 1
               }
-          }, 'watername_ocean');  // Same as deck.gl beforeId
+          };
+          if (firstLabelId) {
+            map.addLayer(outlineLayer, firstLabelId);
+          } else {
+            map.addLayer(outlineLayer);
+          }
       };
       
+      if (!styleReady) return;
+
       if (map.isStyleLoaded()) {
           addOutlineLayer();
       } else {
           map.once('style.load', addOutlineLayer);
       }
-  }, [geojsonData, projectCDs]);
+  }, [geojsonData, projectCDs, styleReady]);
 
   // 7. Navigation Handler
   useEffect(() => {
