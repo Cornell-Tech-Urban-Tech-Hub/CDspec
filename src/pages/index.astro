@@ -65,9 +65,9 @@ studentData.forEach(student => {
           <div class="hero-center-col">
             <h1 class="hero-title">CDSpec NYC</h1>
             <p class="hero-description">
-              Student-led, 'adopt-a-community district' analyses that propose solutions to pressing local issues. Students analyze, characterize, and map hard systems, soft systems, and their interactions in one of the city's 59 community districts.
+              Student-led, 'adopt-a-community district' analyses that propose solutions to pressing local issues. Students analyzed, characterized, and mapped hard systems, soft systems, and their interactions in one of the city's 59 community districts.
             </p>
-            <p class="hero-description">Course project for the Fall 2025 iteration of Urban Systems, part of the Urban Tech Master's program at Cornell Tech.</p>
+            <p class="hero-description">Course project for the Fall 2025 iteration of Urban Systems, part of the <a href='https://tech.cornell.edu/programs/masters-programs/jacobs-technion-cornell-dual-ms-urban-tech/'>Urban Tech Master's program</a> at Cornell Tech.</p>
           </div>
           
           <!-- Right: Instructions -->
@@ -86,6 +86,9 @@ studentData.forEach(student => {
       
       <!-- Map added to hero section -->
       <div id="home-map-section" class="relative overflow-hidden border-b border-black flex-1 w-full flex flex-col mb-0 pb-0">
+        <!-- Curtain overlay - drops down to reveal map after 2 seconds -->
+        <div id="map-curtain-overlay" class="map-curtain-overlay"></div>
+        
         <!-- Gradient fade overlay at top (uses site background color #FBFBFD) -->
         <div style="position: absolute; top: 0; left: 0; right: 0; height: 40px; background: linear-gradient(to bottom, rgba(226,221,214,1) 0%, rgba(226,221,214,0.8) 30%, rgba(226,221,214,0) 100%); z-index: 10; pointer-events: none;"></div>
         
@@ -101,7 +104,7 @@ studentData.forEach(student => {
     </div>
   </section>
 
-  <!-- JavaScript for map navigation -->
+  <!-- JavaScript for map navigation and fade effect -->
   <script>
     // Wait for the page to load
     document.addEventListener('DOMContentLoaded', function() {
@@ -111,6 +114,14 @@ studentData.forEach(student => {
          const { cdCode, mapId } = customEvent.detail || {};
          if (mapId !== 'home-page-map' || !cdCode) return;
       });
+      
+      // Trigger curtain drop animation 2 seconds after page load
+      setTimeout(() => {
+        const curtain = document.getElementById('map-curtain-overlay');
+        if (curtain) {
+          curtain.classList.add('curtain-dropped');
+        }
+      }, 2000);
     });
   </script>
 </MainLayout>

@@ -258,6 +258,24 @@ main > section:first-child.header-offset {
   width: 100%;
 }
 
+.map-curtain-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background-color: #E2DDD6;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 1;
+  transition: opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  will-change: opacity;
+}
+
+.map-curtain-overlay.curtain-dropped {
+  opacity: 0;
+}
+
 .hero-columns {
   display: grid;
   grid-template-columns: 30% 40% 30%;
