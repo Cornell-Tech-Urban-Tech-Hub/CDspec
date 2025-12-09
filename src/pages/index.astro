@@ -49,37 +49,48 @@ studentData.forEach(student => {
     <div class="w-full flex-1 flex flex-col">
       <!-- Hero Header -->
       <div class="hero-header-container fade-in">
-        <!-- Three column row - logo, title+description, instructions -->
+        <!-- Three column row - title+button, description, logo+instructions -->
         <div class="hero-columns">
-          <!-- Left: Cornell Tech Logo -->
+          <!-- Left: Title + Button -->
           <div class="hero-logo-col">
+            <h1 class="hero-title">CDSpec NYC</h1>
+            <p class="subtitle-description">
+              Course project for the Fall 2025 Urban Systems course, a core component of the <a href='https://tech.cornell.edu/programs/masters-programs/jacobs-technion-cornell-dual-ms-urban-tech/'>Urban Tech Master's program</a> at Cornell Tech.
+            </p>
+            <a href="/" class="project-blog-btn hero-button hero-desktop-btn">
+              <span class="btn-text">Project Blog Post</span>
+              <span class="btn-subtitle">(coming soon!)</span>
+            </a>
+          </div>
+          
+          <!-- Center: Description -->
+          <div class="hero-center-col">
+            <p class="hero-description">
+              CDSpec is a student-led project in Cornell Tech's Urban Systems class. Students selected and 'adopted' a NYC community district for the entire semester and undertook analyses that propose solutions to pressing local issues they discovered in their research. For the project, students analyzed, characterized, and mapped hard systems, soft systems, and their interactions in these neighborhoods to discover hidden patterns in these critical local urban systems. 
+            </p>
+          </div>
+          
+          <!-- Mobile-only: Button and Logo above instructions -->
+          <div class="hero-mobile-top">
+            <a href="/" class="project-blog-btn hero-button">
+              <span class="btn-text">Project Blog Post</span>
+              <span class="btn-subtitle">(coming soon!)</span>
+            </a>
             <img 
               src="/images/ct-horizontal-black.png" 
               alt="Cornell Tech" 
               class="hero-logo"
             />
-
           </div>
           
-          <!-- Center: Title + Description -->
-          <div class="hero-center-col">
-            <h1 class="hero-title">CDSpec NYC</h1>
-            <p class="hero-description">
-              Student-led, 'adopt-a-community district' analyses that propose solutions to pressing local issues. Students analyzed, characterized, and mapped hard systems, soft systems, and their interactions in one of the city's 59 community districts.
-            </p>
-            <p class="hero-description">Course project for the Fall 2025 iteration of Urban Systems, part of the <a href='https://tech.cornell.edu/programs/masters-programs/jacobs-technion-cornell-dual-ms-urban-tech/'>Urban Tech Master's program</a> at Cornell Tech.</p>
-          </div>
-          
-          <!-- Right: Instructions -->
+          <!-- Right: Logo + Instructions -->
           <div class="hero-instructions-col">
+            <img 
+              src="/images/ct-horizontal-black.png" 
+              alt="Cornell Tech" 
+              class="hero-logo hero-desktop-logo"
+            />
             <p class="hero-instructions">Orange areas on the map below represent community districts with a completed CDSpec StoryMap. Click on any such district to view the corresponding analysis.</p>
-
-
-                        
-            <a href="/" class="project-blog-btn hero-button">
-              <span class="btn-text">Project Blog Post</span>
-              <span class="btn-subtitle">(coming soon!)</span>
-            </a>
           </div>
         </div>
       </div>
