@@ -7,6 +7,8 @@ import { calculateBoundingBox } from '../../utils/mapUtils';
 import mapEventManager from '../../utils/mapEvents';
 import * as turf from '@turf/turf';
 const center = turf.center;
+const bboxCalc = turf.bbox;
+const bboxPolygon = turf.bboxPolygon;
 
 // Static imports for better stability with client:only
 import { GeoJsonLayer } from '@deck.gl/layers';
@@ -48,6 +50,28 @@ type BoundingBox = {
   maxLng: number;
   maxLat: number;
 };
+
+// Helper: narrow bbox to NYC community districts only (avoids stray features skewing fit)
+function getNYCBoundingFeatureCollection(data: any) {
+  if (!data || !Array.isArray(data.features)) return null;
+  const filtered = data.features.filter((f: any) => {
+    const raw = f?.properties?.cdCode ?? f?.properties?.boro_cd ?? f?.properties?.BoroCD;
+    const num = Number(raw);
+    return raw && !Number.isNaN(num) && num >= 101 && num <= 595;
+  });
+  if (filtered.length === 0) return null;
+  return { type: 'FeatureCollection', features: filtered };
+}
+
+function getNYCBboxArray(data: any): [number, number, number, number] | null {
+  const fc = getNYCBoundingFeatureCollection(data);
+  if (!fc) return null;
+  try {
+    return bboxCalc(fc as any) as [number, number, number, number];
+  } catch {
+    return null;
+  }
+}
 
 interface MapVisualizerProps {
   projectCDs: string[];
@@ -242,6 +266,10 @@ const DeckGLMap = React.memo(function DeckGLMap({
   const markerElRef = useRef<HTMLDivElement | null>(null);
   const lastHoveredCDRef = useRef<string | null>(null);
   const [styleReady, setStyleReady] = useState(false);
+  const didInitialFitRef = useRef(false);
+  const fitThrottleRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastBboxRef = useRef<[number, number, number, number] | null>(null);
+  const bboxDebugFeature = null; // debug rectangle disabled for production
   
   // Track if map is moving to disable transitions during zoom/pan
   const isMovingRef = useRef<boolean>(false);
@@ -253,6 +281,24 @@ const DeckGLMap = React.memo(function DeckGLMap({
   const projectCDsSet = useMemo(() => {
     return new Set(projectCDs.map(cd => String(cd).trim()));
   }, [projectCDs]);
+
+  // Resolve a more zoomed-out start on smaller viewports
+  const initialZoomResolved = useMemo(() => {
+    if (typeof window === 'undefined') return initialZoom;
+    const w = window.innerWidth;
+    if (w <= 640) return Math.min(initialZoom, 8.2);
+    if (w <= 1024) return Math.min(initialZoom, 10.0);
+    return initialZoom;
+  }, [initialZoom]);
+
+  const minZoomResolved = useMemo(() => {
+    if (typeof window === 'undefined') return 10;
+    const w = window.innerWidth;
+    if (w <= 640) return 7.0;
+    if (w <= 1024) return 8.5;
+    if (w <= 1600) return 10.0;
+    return 10.7;
+  }, []);
 
   // MERGED FEATURES (Optimize Picking Performance)
   // Instead of two layers, we prepare one dataset with an "isActive" property
@@ -292,6 +338,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
     const initMap = async () => {
       if (isCancelled) return;
       setStyleReady(false);
+      didInitialFitRef.current = false;
       const mapContainer = document.getElementById(mapContainerId);
       if (!mapContainer || currentMapRef.current) return;
 
@@ -362,12 +409,12 @@ const DeckGLMap = React.memo(function DeckGLMap({
           container: mapLibreId,
           // NYC Human Geography basemap (ArcGIS) — Carto disabled
           style: normalizedStyle,
-          center: [-74.0060, 40.63],
-          zoom: initialZoom,
-          pitch: 45,
+          center: [-74, 40.55],
+          zoom: initialZoomResolved,
+          pitch: 30,
           bearing: -15,
-          minZoom: 10,
-          maxZoom: 16,
+          minZoom: minZoomResolved,
+          maxZoom: 14,
           antialias: true, // Smooth edges on 3D extrusions
           fadeDuration: 100, // Smooth tile transitions during zoom
           trackResize: true,
@@ -492,6 +539,109 @@ const DeckGLMap = React.memo(function DeckGLMap({
     return () => { isCancelled = true; };
   }, [mapId]);
 
+  // Fit NYC bounds once (and on resize) on home map using data-driven bbox
+  useEffect(() => {
+    if (mapId !== 'home-page-map') return;
+    const map = currentMapRef.current;
+    if (!map || !geojsonData || !styleReady) return;
+
+    // Cache bbox for debugging and reuse
+    try {
+      const narrowed = getNYCBboxArray(geojsonData);
+      const arr = narrowed || (bboxCalc(geojsonData as any) as [number, number, number, number]);
+      lastBboxRef.current = arr;
+      (window as any).__lastGeojson = geojsonData;
+      (window as any).__lastBbox = arr;
+    } catch (e) {
+      console.warn('bbox cache error', e);
+    }
+
+    const fitOnce = () => {
+      try {
+        const bboxArray =
+          lastBboxRef.current ||
+          getNYCBboxArray(geojsonData) ||
+          (bboxCalc(geojsonData as any) as [number, number, number, number]); // [minLng, minLat, maxLng, maxLat]
+        let [minLng, minLat, maxLng, maxLat] = bboxArray;
+        minLng = -74.3;
+        const container = map.getContainer();
+        const w = container?.clientWidth || window.innerWidth || 1200;
+        const h = container?.clientHeight || window.innerHeight || 800;
+        const isMobile = w <= 640;
+        const isTablet = w <= 1024 && !isMobile;
+
+        const padBase = Math.min(w, h) * 0.08;
+        const pad = Math.min(180, Math.max(24, padBase));
+        const padTop = isMobile ? pad * 1.05 : pad * (isTablet ? 1.35 : 1.2);
+        const padBottom = isMobile ? pad * 1.05 : pad * (isTablet ? 1.0 : 1.0);
+
+        // Compute camera for bounds without tilt/bearing
+        const cam = map.cameraForBounds(
+          [
+            [minLng, minLat],
+            [maxLng, maxLat],
+          ],
+          {
+            padding: { top: padTop, bottom: padBottom, left: pad, right: pad },
+            maxZoom: isMobile ? 14.1 : isTablet ? 14.1 : 14.5,
+          }
+        );
+
+        if (cam?.center && typeof cam.zoom === 'number') {
+          // Apply center/zoom first with no pitch/bearing/offset
+          map.jumpTo({
+            center: cam.center,
+            zoom: cam.zoom,
+            bearing: 0,
+            pitch: 0,
+          });
+
+          // Then apply desired bearing/pitch
+          map.setBearing(isMobile ? -15 : -15);
+          const targetPitch = isMobile ? 0 : isTablet ? 14 : 45;
+          map.setPitch(targetPitch);
+
+          // Re-center after pitch by projecting bbox center to screen and panning delta to viewport center
+          const centerLng = (minLng + maxLng) / 2;
+          const centerLat = (minLat + maxLat) / 2;
+          const projected = map.project([centerLng, centerLat]);
+          const dx = projected.x - w / 2;
+          const dy = projected.y - h / 2;
+          if (Math.abs(dx) > 1 || Math.abs(dy) > 1) {
+            map.panBy([-dx, -dy], { duration: 0, essential: true });
+          }
+
+          // Nudge to counteract padding and pitch; ensure center stays true on mobile too
+          const padDelta = (padTop - padBottom) / 2;
+          const pitchOffsetY = isMobile ? 0 : h * (isTablet ? 0.12 : 0.18) + padDelta;
+          map.panBy([0, pitchOffsetY], { duration: 0, essential: true });
+        }
+        didInitialFitRef.current = true;
+        (window as any).__didInitialFit = true;
+      } catch (e) {
+        console.warn('fitOnce bbox error', e);
+      }
+    };
+
+    if (!didInitialFitRef.current) {
+      // slight defer to ensure style/layout settle
+      setTimeout(fitOnce, 50);
+    }
+
+    const handleResize = () => {
+      if (fitThrottleRef.current) clearTimeout(fitThrottleRef.current);
+      fitThrottleRef.current = setTimeout(() => {
+        fitOnce();
+      }, 200);
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (fitThrottleRef.current) clearTimeout(fitThrottleRef.current);
+    };
+  }, [geojsonData, styleReady, mapId]);
+
   // 4. Click Handler
   const handleLayerClick = useCallback((info: any) => {
     if (!info?.object) return;
@@ -579,19 +729,21 @@ const DeckGLMap = React.memo(function DeckGLMap({
 
   // 6. Base Layers Update - with smooth hover transitions
   useEffect(() => {
-      if (!currentMapRef.current || !geojsonData) return;
+      const map = currentMapRef.current;
+      if (!map || !geojsonData || !styleReady) return;
       
       const layerPrefix = `${mapId}-layers`;
       
-      const layers = [];
+      const layers: any[] = [];
 
       // Deck.gl 3D fills - position beneath basemap labels
-      const firstLabelId = currentMapRef.current
+      const firstLabelId = map
         ?.getStyle()
         ?.layers?.find((l: any) => l.type === 'symbol')?.id;
 
-      if (styleReady && mergedFeatures.length > 0) {
-          layers.push(new GeoJsonLayer({
+      if (mergedFeatures.length > 0) {
+          // @ts-ignore deck.gl typing mismatch in this env
+          layers.push(new (GeoJsonLayer as any)({
               id: `${layerPrefix}-fills`,
               data: mergedFeatures,
               beforeId: firstLabelId || undefined,
@@ -616,11 +768,12 @@ const DeckGLMap = React.memo(function DeckGLMap({
                 shininess: 0,
                 specularColor: [0, 0, 0]
               },
-              parameters: { 
-                depthTest: false, // ensure fills draw above basemap geometry
+              parameters: {
+                // ensure fills draw above basemap geometry
+                depthTest: false,
                 depthMask: false,
                 blend: true,
-              },
+              } as any,
               onClick: handleLayerClick,
               onHover: updateTooltip,
               updateTriggers: {
@@ -633,6 +786,15 @@ const DeckGLMap = React.memo(function DeckGLMap({
       baseLayersRef.current = layers;
 
       // Initial overlay setup or update
+      if (layers.length === 0) {
+        if (currentOverlayRef.current) {
+          map.removeControl(currentOverlayRef.current);
+          currentOverlayRef.current = null;
+          setDeckOverlay(null as any);
+        }
+        return;
+      }
+
       if (!currentOverlayRef.current) {
           const overlay = new MapboxOverlay({ 
               // Interleave so beforeId positions below labels
@@ -642,14 +804,49 @@ const DeckGLMap = React.memo(function DeckGLMap({
           });
           currentOverlayRef.current = overlay;
           (window as any).__lastOverlay = overlay;
-          currentMapRef.current.addControl(overlay);
+          map.addControl(overlay);
           setDeckOverlay(overlay);
       } else {
           currentOverlayRef.current.setProps({ layers });
       }
   }, [mergedFeatures, projectCDsSet, handleLayerClick, updateTooltip, styleReady]);
 
-      // 6b. Create/update native MapLibre outline layer (basemap agnostic)
+  // 6a. Clamp basemap labels to NYC extent (hide NJ/LI)
+  useEffect(() => {
+    const map = currentMapRef.current;
+    if (!map || !styleReady) return;
+
+    const clampLabels = () => {
+      const style = map.getStyle();
+      if (!style?.layers) return;
+      style.layers.forEach((layer: any) => {
+        if (layer.type === 'symbol') {
+          try {
+            const id: string = layer.id || '';
+            const hide =
+              id.startsWith('Region Roads') ||
+              id.startsWith('Boundaries/Countries') ||
+              id.startsWith('City Labels/label/Region');
+
+            if (hide) {
+              map.setPaintProperty(layer.id, 'text-opacity', 0 as any);
+              map.setPaintProperty(layer.id, 'text-halo-opacity', 0 as any);
+            }
+          } catch (e) {
+            // Some symbol layers may not support text props; skip safely
+          }
+        }
+      });
+    };
+
+    clampLabels();
+    map.on('styledata', clampLabels);
+    return () => {
+      map.off('styledata', clampLabels);
+    };
+  }, [styleReady]);
+
+  // 6b. Create/update native MapLibre outline layer (basemap agnostic)
   useEffect(() => {
       const map = currentMapRef.current;
       if (!map || !geojsonData) return;
