@@ -712,7 +712,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
       <div class="tooltip-content ${hasProject ? 'active' : ''}">
         <h3>${cdCode || 'District'}</h3>
         <span>${hasProject 
-          ? '<span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span> View Project' 
+          ? '<span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span> Click to View Project' 
           : 'No active project'}</span>
       </div>
       <div class="tooltip-arrow ${hasProject ? 'active' : ''}"></div>
