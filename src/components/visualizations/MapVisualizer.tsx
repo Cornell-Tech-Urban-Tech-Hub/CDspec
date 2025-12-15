@@ -277,6 +277,15 @@ const DeckGLMap = React.memo(function DeckGLMap({
   // Store layers in ref to access them in callbacks without triggering renders
   const baseLayersRef = useRef<any[]>([]);
   
+  // Mobile/tablet tap handling: track which CD has tooltip visible (for second tap detection)
+  const activeTooltipCDRef = useRef<string | null>(null);
+  
+  // Helper to detect mobile/tablet
+  const isMobileOrTablet = useCallback(() => {
+    if (typeof window === 'undefined') return false;
+    return window.innerWidth <= 1024;
+  }, []);
+  
   // Memoize project CDs set for fast lookups
   const projectCDsSet = useMemo(() => {
     return new Set(projectCDs.map(cd => String(cd).trim()));
@@ -532,6 +541,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
              currentMapRef.current.remove();
              currentMapRef.current = null;
         }
+        activeTooltipCDRef.current = null;
       };
     };
 
@@ -642,23 +652,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
     };
   }, [geojsonData, styleReady, mapId]);
 
-  // 4. Click Handler
-  const handleLayerClick = useCallback((info: any) => {
-    if (!info?.object) return;
-    const cdCode = info.object.properties?.cdCode;
-    
-    if (cdCode && projectCDsSet.has(String(cdCode).trim()) && CDToSlugMap[cdCode]) {
-        const dest = CDToSlugMap[cdCode];
-        if (dest.startsWith('http')) {
-            window.open(dest, '_blank', 'noopener,noreferrer');
-        } else {
-            const path = dest.startsWith('/projects/') ? dest : `/projects/${dest}`;
-            window.location.href = path;
-        }
-    }
-  }, [projectCDsSet, CDToSlugMap]);
-
-  // 5. Imperative Hover Handler - OPTIMIZED for instant response
+  // 4. Imperative Hover Handler - OPTIMIZED for instant response
   const updateTooltipCore = useCallback((info: any) => {
     const map = currentMapRef.current;
     if (!map) return;
@@ -708,24 +702,70 @@ const DeckGLMap = React.memo(function DeckGLMap({
     el.style.opacity = '1';
 
     // Optimized DOM Update - minimal reflow
+    const isMobile = isMobileOrTablet();
+    const actionText = hasProject 
+      ? (isMobile ? 'Tap again to View Project' : 'Click to View Project')
+      : 'No active project';
+    
     el.innerHTML = `
       <div class="tooltip-content ${hasProject ? 'active' : ''}">
         <h3>${cdCode || 'District'}</h3>
         <span>${hasProject 
-          ? '<span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span> Click to View Project' 
-          : 'No active project'}</span>
+          ? `<span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span> ${actionText}` 
+          : actionText}</span>
       </div>
       <div class="tooltip-arrow ${hasProject ? 'active' : ''}"></div>
       <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}</style>
     `;
 
-  }, []);
+  }, [isMobileOrTablet]);
 
   // Throttled version for hover events (16ms = ~60fps max)
   const updateTooltip = useMemo(
     () => throttle(updateTooltipCore, 16),
     [updateTooltipCore]
   );
+
+  // 5. Click Handler - with mobile/tablet tap-to-hover support
+  const handleLayerClick = useCallback((info: any) => {
+    if (!info?.object) return;
+    const cdCode = info.object.properties?.cdCode;
+    
+    // On mobile/tablet: first tap = show tooltip, second tap = navigate
+    if (isMobileOrTablet()) {
+      // If this CD already has tooltip visible, treat as second tap (navigate)
+      if (activeTooltipCDRef.current === cdCode) {
+        // Second tap - navigate
+        activeTooltipCDRef.current = null;
+        if (cdCode && projectCDsSet.has(String(cdCode).trim()) && CDToSlugMap[cdCode]) {
+          const dest = CDToSlugMap[cdCode];
+          if (dest.startsWith('http')) {
+            window.open(dest, '_blank', 'noopener,noreferrer');
+          } else {
+            const path = dest.startsWith('/projects/') ? dest : `/projects/${dest}`;
+            window.location.href = path;
+          }
+        }
+        return;
+      }
+      
+      // First tap - show tooltip and mark as active
+      activeTooltipCDRef.current = cdCode;
+      updateTooltipCore(info);
+      return;
+    }
+    
+    // Desktop: direct click navigation (existing behavior)
+    if (cdCode && projectCDsSet.has(String(cdCode).trim()) && CDToSlugMap[cdCode]) {
+        const dest = CDToSlugMap[cdCode];
+        if (dest.startsWith('http')) {
+            window.open(dest, '_blank', 'noopener,noreferrer');
+        } else {
+            const path = dest.startsWith('/projects/') ? dest : `/projects/${dest}`;
+            window.location.href = path;
+        }
+    }
+  }, [projectCDsSet, CDToSlugMap, isMobileOrTablet, updateTooltipCore]);
 
   // 6. Base Layers Update - with smooth hover transitions
   useEffect(() => {
