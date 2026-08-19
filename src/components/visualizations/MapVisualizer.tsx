@@ -87,6 +87,13 @@ interface MapVisualizerProps {
    * centered exactly.
    */
   fitOffsetY?: number | null;
+  /**
+   * Fit the camera to the district bbox on load and on resize. Without
+   * it the map stays wherever the constructor put it, which is a point
+   * in Lower New York Bay. Defaults to true only for the home map, which
+   * is the historical behavior.
+   */
+  fitBounds?: boolean;
 }
 
 interface DeckGLMapProps {
@@ -100,6 +107,7 @@ interface DeckGLMapProps {
   CDToSlugMap: Record<string, string>;
   onMapLoaded?: () => void;
   fitOffsetY?: number | null;
+  fitBounds?: boolean;
 }
 
 export default function MapVisualizer({ 
@@ -109,7 +117,8 @@ export default function MapVisualizer({
   initialZoom = 13, // Slightly zoomed out for 3D view
   mapId = 'default-map',
   CDToSlugMap = {},
-  fitOffsetY = null
+  fitOffsetY = null,
+  fitBounds
 }: MapVisualizerProps) {
   const zoomLevelRef = useRef(initialZoom);
   const [mapLoading, setMapLoading] = useState(true);
@@ -243,6 +252,7 @@ export default function MapVisualizer({
           CDToSlugMap={CDToSlugMap}
           onMapLoaded={handleMapLoaded}
           fitOffsetY={fitOffsetY}
+          fitBounds={fitBounds}
         />
       </div>
     </MapProvider>
@@ -260,7 +270,8 @@ const DeckGLMap = React.memo(function DeckGLMap({
   mapLibreId,
   CDToSlugMap,
   onMapLoaded,
-  fitOffsetY = null
+  fitOffsetY = null,
+  fitBounds
 }: DeckGLMapProps) {
   if (typeof window === 'undefined') return null;
   
@@ -560,9 +571,13 @@ const DeckGLMap = React.memo(function DeckGLMap({
     return () => { isCancelled = true; };
   }, [mapId]);
 
-  // Fit NYC bounds once (and on resize) on home map using data-driven bbox
+  // Fit NYC bounds once (and on resize) using the data-driven bbox.
+  // Historically this ran only for the home map; any other map was left
+  // at the constructor's center, out in Lower New York Bay. Callers opt
+  // in with fitBounds.
+  const shouldFit = fitBounds ?? mapId === 'home-page-map';
   useEffect(() => {
-    if (mapId !== 'home-page-map') return;
+    if (!shouldFit) return;
     const map = currentMapRef.current;
     if (!map || !geojsonData || !styleReady) return;
 
@@ -671,7 +686,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
       window.removeEventListener('resize', handleResize);
       if (fitThrottleRef.current) clearTimeout(fitThrottleRef.current);
     };
-  }, [geojsonData, styleReady, mapId, fitOffsetY]);
+  }, [geojsonData, styleReady, mapId, fitOffsetY, shouldFit]);
 
   // 4. Imperative Hover Handler - OPTIMIZED for instant response
   const updateTooltipCore = useCallback((info: any) => {
