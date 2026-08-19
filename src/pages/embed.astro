@@ -58,6 +58,18 @@ studentData.forEach((student) => {
   </BaseHead>
 
   <body>
+    <!-- ?offset=<px> overrides the fit's vertical nudge, for tuning the
+         framing against a live map. Positive moves the view south, which
+         lifts the city higher in the frame; negative drops it lower. -->
+    <script is:inline>
+      (function () {
+        var raw = new URLSearchParams(location.search).get('offset');
+        if (raw === null) return;
+        var n = Number(raw);
+        if (!Number.isNaN(n)) window.__cdspecFitOffsetY = n;
+      })();
+    </script>
+
     <div class='embed-shell'>
       <div class='embed-map'>
         <!-- height: MapVisualizer only stretches to the viewport for the

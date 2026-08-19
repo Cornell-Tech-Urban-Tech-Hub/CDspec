@@ -637,7 +637,12 @@ const DeckGLMap = React.memo(function DeckGLMap({
           // push is cosmetic. Callers that want it centered pass fitOffsetY 0.
           const padDelta = (padTop - padBottom) / 2;
           const pitchOffsetY = isMobile ? 0 : h * (isTablet ? 0.12 : 0.18) + padDelta;
-          const nudgeY = fitOffsetY == null ? pitchOffsetY : fitOffsetY;
+          // The embed route sets __cdspecFitOffsetY from its ?offset=
+          // query parameter, so the framing can be dialled in against a
+          // live map without a redeploy.
+          const override = (window as any).__cdspecFitOffsetY;
+          const resolved = typeof override === 'number' ? override : fitOffsetY;
+          const nudgeY = resolved == null ? pitchOffsetY : resolved;
           if (nudgeY) {
             map.panBy([0, nudgeY], { duration: 0, essential: true });
           }
