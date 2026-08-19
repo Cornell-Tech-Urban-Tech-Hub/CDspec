@@ -60,14 +60,18 @@ studentData.forEach((student) => {
   <body>
     <div class='embed-shell'>
       <div class='embed-map'>
-        <!-- MapVisualizer only stretches to the viewport for the
+        <!-- height: MapVisualizer only stretches to the viewport for the
              'home-page-map' id; every other map falls back to its 500px
-             default. Pass height explicitly so the map fills this frame. -->
+             default, so pass it explicitly.
+             fitOffsetY: the default fit pushes the view south to make room
+             for the 3D pitch. In a short embed frame that pushes the city
+             off the bottom, so keep the district bbox centered. -->
         <MapVisualizer
           client:only='react'
           projectCDs={projectCDs}
           mapId='embed-map'
           height='100%'
+          fitOffsetY={0}
           CDToSlugMap={cdToSlugMap}
         />
       </div>

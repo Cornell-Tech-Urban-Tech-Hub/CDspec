@@ -80,6 +80,13 @@ interface MapVisualizerProps {
   initialZoom?: number;
   mapId?: string;
   CDToSlugMap?: Record<string, string>;
+  /**
+   * Vertical nudge applied after the initial fit, in pixels. Positive
+   * moves the view south. Leave undefined to keep the pitch-compensating
+   * heuristic the home page relies on; pass 0 to leave the district bbox
+   * centered exactly.
+   */
+  fitOffsetY?: number | null;
 }
 
 interface DeckGLMapProps {
@@ -92,6 +99,7 @@ interface DeckGLMapProps {
   mapLibreId: string;
   CDToSlugMap: Record<string, string>;
   onMapLoaded?: () => void;
+  fitOffsetY?: number | null;
 }
 
 export default function MapVisualizer({ 
@@ -100,7 +108,8 @@ export default function MapVisualizer({
   height = '500px',
   initialZoom = 13, // Slightly zoomed out for 3D view
   mapId = 'default-map',
-  CDToSlugMap = {}
+  CDToSlugMap = {},
+  fitOffsetY = null
 }: MapVisualizerProps) {
   const zoomLevelRef = useRef(initialZoom);
   const [mapLoading, setMapLoading] = useState(true);
@@ -233,6 +242,7 @@ export default function MapVisualizer({
           mapLibreId={mapLibreId}
           CDToSlugMap={CDToSlugMap}
           onMapLoaded={handleMapLoaded}
+          fitOffsetY={fitOffsetY}
         />
       </div>
     </MapProvider>
@@ -249,7 +259,8 @@ const DeckGLMap = React.memo(function DeckGLMap({
   mapContainerId,
   mapLibreId,
   CDToSlugMap,
-  onMapLoaded
+  onMapLoaded,
+  fitOffsetY = null
 }: DeckGLMapProps) {
   if (typeof window === 'undefined') return null;
   
@@ -621,10 +632,15 @@ const DeckGLMap = React.memo(function DeckGLMap({
             map.panBy([-dx, -dy], { duration: 0, essential: true });
           }
 
-          // Nudge to counteract padding and pitch; ensure center stays true on mobile too
+          // Nudge to counteract padding and pitch; ensure center stays true on mobile too.
+          // The bbox center is already dead center at this point, so this
+          // push is cosmetic. Callers that want it centered pass fitOffsetY 0.
           const padDelta = (padTop - padBottom) / 2;
           const pitchOffsetY = isMobile ? 0 : h * (isTablet ? 0.12 : 0.18) + padDelta;
-          map.panBy([0, pitchOffsetY], { duration: 0, essential: true });
+          const nudgeY = fitOffsetY == null ? pitchOffsetY : fitOffsetY;
+          if (nudgeY) {
+            map.panBy([0, nudgeY], { duration: 0, essential: true });
+          }
         }
         didInitialFitRef.current = true;
         (window as any).__didInitialFit = true;
@@ -650,7 +666,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
       window.removeEventListener('resize', handleResize);
       if (fitThrottleRef.current) clearTimeout(fitThrottleRef.current);
     };
-  }, [geojsonData, styleReady, mapId]);
+  }, [geojsonData, styleReady, mapId, fitOffsetY]);
 
   // 4. Imperative Hover Handler - OPTIMIZED for instant response
   const updateTooltipCore = useCallback((info: any) => {
