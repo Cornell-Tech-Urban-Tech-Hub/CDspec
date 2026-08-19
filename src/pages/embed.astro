@@ -1,0 +1,136 @@
+---
+/**
+ * Chrome-free embed of the CDspec map.
+ *
+ * This route exists so other Cornell Tech course sites can iframe the map
+ * on its own, without the site header, hero, or footer. It mirrors the
+ * home page's map data exactly; only the surrounding page differs.
+ *
+ * Consumers: the INFO 5410 Urban Systems site (info5410.tech.cornell.edu)
+ * embeds this under its Projects section. Keep the route stable.
+ */
+import BaseHead from '../components/layout/BaseHead.astro';
+import MapVisualizer from '../components/visualizations/MapVisualizer.js';
+import studentData from '../../processing/student_data_verified_1204.json';
+import { getCollection } from 'astro:content';
+import '../styles/global.css';
+
+// Same derivation as src/pages/index.astro. If that changes, change it here too.
+const studentProjectCDs = studentData
+  .filter((s) => s.community_district && !s.needs_review)
+  .map((s) => s.community_district);
+
+const contentProjects = await getCollection('projects');
+const contentProjectCDs = contentProjects
+  .filter((p) => !p.data.draft)
+  .map((p) => p.data.cdCode);
+
+const projectCDs = [
+  ...new Set([...studentProjectCDs, ...contentProjectCDs]),
+].sort();
+
+const cdToSlugMap: Record<string, string> = {};
+
+contentProjects.forEach((project) => {
+  if (!project.data.draft) {
+    cdToSlugMap[project.data.cdCode] = `/projects/${project.slug}`;
+  }
+});
+
+// Student entries carry external StoryMap URLs, which the map opens in a
+// new tab. That is what keeps the embed from navigating inside the frame.
+studentData.forEach((student) => {
+  if (student.community_district && student.storymap_url && !student.needs_review) {
+    if (!cdToSlugMap[student.community_district]) {
+      cdToSlugMap[student.community_district] = student.storymap_url;
+    }
+  }
+});
+---
+
+<html lang='en' class='h-full'>
+  <BaseHead
+    title='CDspec map'
+    description='Interactive map of NYC community districts with student CDspec StoryMaps.'
+  >
+    <!-- The embed is a frame target, not a destination. Keep it out of search. -->
+    <meta name='robots' content='noindex, follow' />
+  </BaseHead>
+
+  <body>
+    <div class='embed-shell'>
+      <div class='embed-map'>
+        <MapVisualizer
+          client:only='react'
+          projectCDs={projectCDs}
+          mapId='embed-map'
+          CDToSlugMap={cdToSlugMap}
+        />
+      </div>
+      <!-- The host page cannot explain the map's color coding, so the
+           legend travels with the embed. -->
+      <p class='embed-caption'>
+        <span class='embed-key' aria-hidden='true'></span>
+        Districts in orange have a completed CDspec StoryMap. Click one to
+        open it in a new tab.
+        <a href='/' target='_blank' rel='noopener noreferrer'>
+          Full CDspec site
+        </a>
+      </p>
+    </div>
+  </body>
+</html>
+
+<style is:global>
+  /* The embed is the whole viewport. No page scroll, no chrome. */
+  html,
+  body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #e2ddd6;
+  }
+
+  .embed-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+
+  .embed-map {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .embed-caption {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.5rem 0.875rem;
+    border-top: 1px solid rgba(0, 0, 0, 0.15);
+    background: #e2ddd6;
+    font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: #1d1d1f;
+  }
+
+  .embed-key {
+    flex: 0 0 auto;
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 1px solid rgba(0, 0, 0, 0.35);
+    background: rgb(255, 143, 41);
+  }
+
+  .embed-caption a {
+    margin-left: auto;
+    padding-left: 0.75rem;
+    color: var(--cornell-red, #b31b1b);
+    white-space: nowrap;
+  }
+</style>

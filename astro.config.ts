@@ -7,7 +7,13 @@ export default defineConfig({
   site: 'https://cdspec.urbanforward.tech',  // Repository name as base path
   base: '/', // Explicitly define base path for all site URLs
   trailingSlash: 'ignore',
-  integrations: [sitemap(), react(), UnoCSS()],
+  integrations: [
+    // /embed/ is a frame target for other sites, not a destination page.
+    // It is noindex, so keep it out of the sitemap too.
+    sitemap({ filter: (page) => !page.includes('/embed') }),
+    react(),
+    UnoCSS(),
+  ],
   vite: {
     plugins: [],
     ssr: {
