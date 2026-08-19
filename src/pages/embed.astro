@@ -60,10 +60,14 @@ studentData.forEach((student) => {
   <body>
     <div class='embed-shell'>
       <div class='embed-map'>
+        <!-- MapVisualizer only stretches to the viewport for the
+             'home-page-map' id; every other map falls back to its 500px
+             default. Pass height explicitly so the map fills this frame. -->
         <MapVisualizer
           client:only='react'
           projectCDs={projectCDs}
           mapId='embed-map'
+          height='100%'
           CDToSlugMap={cdToSlugMap}
         />
       </div>
@@ -92,30 +96,42 @@ studentData.forEach((student) => {
     background: #e2ddd6;
   }
 
+  /* The map sizes itself once, when it initializes, and does not chase
+     later layout changes. So the frame gives it a definite height on the
+     first layout pass: the caption bar is a fixed height and the map is
+     absolutely positioned above it. A flex-derived height would leave the
+     map measuring itself mid-layout and locking in the wrong size. */
   .embed-shell {
-    display: flex;
-    flex-direction: column;
+    --caption-h: 2.25rem;
+    position: relative;
     height: 100%;
   }
 
   .embed-map {
-    position: relative;
-    flex: 1 1 auto;
-    min-height: 0;
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: var(--caption-h);
+    left: 0;
   }
 
   .embed-caption {
-    flex: 0 0 auto;
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    box-sizing: border-box;
+    height: var(--caption-h);
     display: flex;
     align-items: center;
     gap: 0.5rem;
     margin: 0;
-    padding: 0.5rem 0.875rem;
+    padding: 0 0.875rem;
     border-top: 1px solid rgba(0, 0, 0, 0.15);
     background: #e2ddd6;
     font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 0.8125rem;
-    line-height: 1.4;
+    line-height: 1.3;
     color: #1d1d1f;
   }
 
@@ -132,5 +148,13 @@ studentData.forEach((student) => {
     padding-left: 0.75rem;
     color: var(--cornell-red, #b31b1b);
     white-space: nowrap;
+  }
+
+  /* The caption wraps to two lines in a narrow frame, so the reserved
+     strip grows with it. */
+  @media (max-width: 34rem) {
+    .embed-shell {
+      --caption-h: 3.5rem;
+    }
   }
 </style>
