@@ -11,9 +11,14 @@
  */
 import BaseHead from '../components/layout/BaseHead.astro';
 import MapVisualizer from '../components/visualizations/MapVisualizer.js';
-import studentData from '../../processing/student_data_verified_1204.json';
+import studentData2025 from '../../processing/student_data_verified_1204.json';
+import studentData2026 from '../../processing/student_data_2026.json';
 import { getCollection } from 'astro:content';
 import '../styles/global.css';
+
+// Both cohorts share one map. Their districts don't overlap; if a later
+// cohort reuses a district, the earlier cohort's StoryMap wins below.
+const studentData = [...studentData2025, ...studentData2026];
 
 // Same derivation as src/pages/index.astro. If that changes, change it here too.
 const studentProjectCDs = studentData

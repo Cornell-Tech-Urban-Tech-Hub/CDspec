@@ -2,7 +2,12 @@
 import MainLayout from '../layouts/Default.astro';
 import { getCollection } from 'astro:content';
 import MapVisualizer from '../components/visualizations/MapVisualizer.js';
-import studentData from '../../processing/student_data_verified_1204.json';
+import studentData2025 from '../../processing/student_data_verified_1204.json';
+import studentData2026 from '../../processing/student_data_2026.json';
+
+// Both cohorts share one map. Their districts don't overlap; if a later
+// cohort reuses a district, the earlier cohort's StoryMap wins below.
+const studentData = [...studentData2025, ...studentData2026];
 
 // Get all project CD codes for the map from the student data
 const studentProjectCDs = studentData
@@ -55,7 +60,7 @@ studentData.forEach(student => {
           <div class="hero-logo-col">
             <h1 class="hero-title">CDSpec NYC</h1>
             <p class="subtitle-description">
-              Course project for the Fall 2025 Urban Systems course, a core component of the <a href='https://tech.cornell.edu/programs/masters-programs/jacobs-technion-cornell-dual-ms-urban-tech/'>Urban Tech Master's program</a> at Cornell Tech.
+              Course project for the Fall 2025 and Fall 2026 Urban Systems courses, a core component of the <a href='https://tech.cornell.edu/programs/masters-programs/jacobs-technion-cornell-dual-ms-urban-tech/'>Urban Tech Master's program</a> at Cornell Tech.
             </p>
             <a href="https://concreteandcode.substack.com/p/5-surprising-truths-about-how-nyc" target="_blank"class="project-blog-btn hero-button hero-desktop-btn">
               <span class="btn-text">Project Blog Post</span>
