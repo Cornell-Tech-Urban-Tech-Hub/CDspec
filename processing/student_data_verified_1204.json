@@ -1,126 +1,147 @@
 [
   {
     "student": "caifengze",
+    "name": "Fengze Cai",
     "community_district": "301",
     "storymap_url": "https://storymaps.arcgis.com/stories/e801e91b73024505b676d0e9c48af1b2",
     "needs_review": false
   },
   {
     "student": "changxiang",
+    "name": "Xiang Chang",
     "community_district": "206",
     "storymap_url": "https://storymaps.arcgis.com/stories/bbe10f2878e040da97cc50cb75cab6e1",
     "needs_review": false
   },
   {
     "student": "corkranmatthias",
+    "name": "Matthias Corkran",
     "community_district": "309",
     "storymap_url": "https://storymaps.arcgis.com/stories/7411f3c1c6ff43838dc3cb6c4bf0b2d5",
     "needs_review": false
   },
   {
     "student": "daidingran",
+    "name": "Dingran Dai",
     "community_district": "102",
     "storymap_url": "https://storymaps.arcgis.com/stories/ced71a2d689947158a2c995728be2a6b",
     "needs_review": false
   },
   {
     "student": "durisetisoumya",
+    "name": "Soumya Duriseti",
     "community_district": "111",
     "storymap_url": "https://storymaps.arcgis.com/stories/8ecd7dfe2a8949bda982a6834281060d",
     "needs_review": false
   },
   {
     "student": "hanzirui",
+    "name": "Zirui Han",
     "community_district": "105",
     "storymap_url": "https://storymaps.arcgis.com/stories/04aafae3811e4d2aa2a0f81861c5bfd4",
     "needs_review": false
   },
   {
     "student": "huangjay",
+    "name": "Jay Huang",
     "community_district": "402",
     "storymap_url": "https://storymaps.arcgis.com/stories/729b10ca106c4c52a39cdd90bfce1b11",
     "needs_review": false
   },
   {
     "student": "jacey",
+    "name": "Chia-Hsi Hu",
     "community_district": "201",
     "storymap_url": "https://arcg.is/myLXT0",
     "needs_review": false
   },
   {
     "student": "jiangbryant",
+    "name": "Bryant Jiang",
     "community_district": "106",
     "storymap_url": "https://arcg.is/1Tnai01",
     "needs_review": false
   },
   {
     "student": "kongedmondchakchun",
+    "name": "Edmond Kong",
     "community_district": "411",
     "storymap_url": "https://storymaps.arcgis.com/stories/ba59c4c378eb4f13a1059c32b84f66cd",
     "needs_review": false
   },
   {
     "student": "louruowen",
+    "name": "Ruowen Lou",
     "community_district": "501",
     "storymap_url": "https://arcg.is/TCejr",
     "needs_review": false
   },
   {
     "student": "mantegnanina",
+    "name": "Nina Mantegna",
     "community_district": "302",
     "storymap_url": "https://arcg.is/9GGuu1",
     "needs_review": false
   },
   {
     "student": "patwardhanishanparag",
+    "name": "Ishan Parag Patwardhan",
     "community_district": "108",
     "storymap_url": "https://arcg.is/1WnGXn",
     "needs_review": false
   },
   {
     "student": "raoyu",
+    "name": "Yu Rao",
     "community_district": "101",
     "storymap_url": "https://storymaps.arcgis.com/stories/75cbdcfb2c044f0daf9ce5256208e330",
     "needs_review": false
   },
   {
     "student": "songhaoyang",
+    "name": "Haoyang Song",
     "community_district": "104",
     "storymap_url": "https://storymaps.arcgis.com/stories/09b4e32c566b493c84230ddeee47023c",
     "needs_review": false
   },
   {
     "student": "tsaihsinyu",
+    "name": "Hsin-Yu Tsai",
     "community_district": "202",
     "storymap_url": "https://storymaps.arcgis.com/stories/dd22acc0dca54146b511811147177dd2",
     "needs_review": false
   },
   {
     "student": "yaulliherreragabriela",
+    "name": "Gabriela Yaulli Herrera",
     "community_district": "401",
     "storymap_url": "https://storymaps.arcgis.com/stories/fd1dd6c2bdb644898194bdefba17ec16",
     "needs_review": false
   },
   {
     "student": "yeleafred",
+    "name": "Leafred Ye",
     "community_district": "407",
     "storymap_url": "https://storymaps.arcgis.com/stories/c8677538f05c44dda41130ecbf561ee8",
     "needs_review": false
   },
   {
     "student": "yochmannadav",
+    "name": "Nadav Yochman",
     "community_district": "312",
     "storymap_url": "https://storymaps.arcgis.com/stories/3277a502bf5b479dab707f447a37c55e",
     "needs_review": false
   },
   {
     "student": "zhangwenzhuo",
+    "name": "Wenzhuo Zhang",
     "community_district": "112",
     "storymap_url": "https://storymaps.arcgis.com/stories/c90b7182f31349a98f2020e651b09605",
     "needs_review": false
   },
   {
     "student": "zhangziji",
+    "name": "Ziji Zhang",
     "community_district": "103",
     "storymap_url": "https://storymaps.arcgis.com/stories/46a2a545697547c7a0288b3a65a03514",
     "needs_review": false

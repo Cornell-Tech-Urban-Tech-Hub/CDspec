@@ -52,6 +52,15 @@ type BoundingBox = {
 };
 
 // Helper: narrow bbox to NYC community districts only (avoids stray features skewing fit)
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getNYCBoundingFeatureCollection(data: any) {
   if (!data || !Array.isArray(data.features)) return null;
   const filtered = data.features.filter((f: any) => {
@@ -80,6 +89,8 @@ interface MapVisualizerProps {
   initialZoom?: number;
   mapId?: string;
   CDToSlugMap?: Record<string, string>;
+  /** Student names shown under the CD code in the hover tooltip. */
+  CDToStudentsMap?: Record<string, string[]>;
   /**
    * Vertical nudge applied after the initial fit, in pixels. Positive
    * moves the view south. Leave undefined to keep the pitch-compensating
@@ -105,6 +116,7 @@ interface DeckGLMapProps {
   mapContainerId: string;
   mapLibreId: string;
   CDToSlugMap: Record<string, string>;
+  CDToStudentsMap: Record<string, string[]>;
   onMapLoaded?: () => void;
   fitOffsetY?: number | null;
   fitBounds?: boolean;
@@ -117,6 +129,7 @@ export default function MapVisualizer({
   initialZoom = 13, // Slightly zoomed out for 3D view
   mapId = 'default-map',
   CDToSlugMap = {},
+  CDToStudentsMap = {},
   fitOffsetY = null,
   fitBounds
 }: MapVisualizerProps) {
@@ -186,6 +199,13 @@ export default function MapVisualizer({
             margin: 0 0 4px 0;
             line-height: 1.2;
           }
+          .tooltip-content .tooltip-students {
+            font-size: 12px;
+            color: #374151;
+            margin: 0 0 4px 0;
+            line-height: 1.3;
+            max-width: 220px;
+          }
           .tooltip-content span {
             font-size: 12px;
             color: #6b7280;
@@ -250,6 +270,7 @@ export default function MapVisualizer({
           mapContainerId={mapContainerId}
           mapLibreId={mapLibreId}
           CDToSlugMap={CDToSlugMap}
+          CDToStudentsMap={CDToStudentsMap}
           onMapLoaded={handleMapLoaded}
           fitOffsetY={fitOffsetY}
           fitBounds={fitBounds}
@@ -269,6 +290,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
   mapContainerId,
   mapLibreId,
   CDToSlugMap,
+  CDToStudentsMap,
   onMapLoaded,
   fitOffsetY = null,
   fitBounds
@@ -743,9 +765,17 @@ const DeckGLMap = React.memo(function DeckGLMap({
       ? (isMobile ? 'Tap again to View Project' : 'Click to View Project')
       : 'No active project';
     
+    // Names come from student-authored StoryMap bylines; escape before
+    // they go into innerHTML.
+    const students = (cdCode && CDToStudentsMap[cdCode]) || [];
+    const studentsHtml = students.length
+      ? `<p class="tooltip-students">${students.map(escapeHtml).join(', ')}</p>`
+      : '';
+
     el.innerHTML = `
       <div class="tooltip-content ${hasProject ? 'active' : ''}">
         <h3>${cdCode || 'District'}</h3>
+        ${studentsHtml}
         <span>${hasProject 
           ? `<span style="width:6px;height:6px;background:#10b981;border-radius:50%;display:inline-block;animation:pulse 2s infinite"></span> ${actionText}` 
           : actionText}</span>
@@ -754,7 +784,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
       <style>@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}</style>
     `;
 
-  }, [isMobileOrTablet]);
+  }, [isMobileOrTablet, CDToStudentsMap]);
 
   // Throttled version for hover events (16ms = ~60fps max)
   const updateTooltip = useMemo(

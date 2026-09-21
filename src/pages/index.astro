@@ -44,6 +44,16 @@ studentData.forEach(student => {
     }
   }
 });
+
+// Names shown under each district in the hover tooltip. Only credit the
+// students behind the StoryMap the district actually links to.
+const cdToStudentsMap: Record<string, string[]> = {};
+studentData.forEach((student) => {
+  const cd = student.community_district;
+  if (!cd || !student.name || student.needs_review) return;
+  if (cdToSlugMap[cd] !== student.storymap_url) return;
+  (cdToStudentsMap[cd] ??= []).push(student.name);
+});
 ---
 
 <MainLayout title="CDSpec - NYC Community District Analysis" 
@@ -115,6 +125,7 @@ studentData.forEach(student => {
             projectCDs={projectCDs} 
             mapId="home-page-map" 
             CDToSlugMap={cdToSlugMap}
+            CDToStudentsMap={cdToStudentsMap}
           />
         </div>
       </div>

@@ -51,6 +51,16 @@ studentData.forEach((student) => {
     }
   }
 });
+
+// Names shown under each district in the hover tooltip. Only credit the
+// students behind the StoryMap the district actually links to.
+const cdToStudentsMap: Record<string, string[]> = {};
+studentData.forEach((student) => {
+  const cd = student.community_district;
+  if (!cd || !student.name || student.needs_review) return;
+  if (cdToSlugMap[cd] !== student.storymap_url) return;
+  (cdToStudentsMap[cd] ??= []).push(student.name);
+});
 ---
 
 <html lang='en' class='h-full'>
@@ -91,6 +101,7 @@ studentData.forEach((student) => {
           fitBounds
           fitOffsetY={0}
           CDToSlugMap={cdToSlugMap}
+          CDToStudentsMap={cdToStudentsMap}
         />
       </div>
       <!-- The host page cannot explain the map's color coding, so the
