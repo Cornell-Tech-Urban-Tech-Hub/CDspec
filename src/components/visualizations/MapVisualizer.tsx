@@ -2,6 +2,7 @@ import * as React from 'react';
 const { useState, useEffect, useRef, useMemo, useCallback } = React;
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapProvider, useMapContext } from './MapContext';
+import MapSearch, { type SearchableDistrict } from './MapSearch';
 import mapCleanupManager from '../../utils/mapCleanup';
 import { calculateBoundingBox } from '../../utils/mapUtils';
 import mapEventManager from '../../utils/mapEvents';
@@ -51,7 +52,6 @@ type BoundingBox = {
   maxLat: number;
 };
 
-// Helper: narrow bbox to NYC community districts only (avoids stray features skewing fit)
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, '&amp;')
@@ -61,6 +61,20 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Opens a district's project. StoryMaps are external and open in a new tab,
+ * which also keeps the /embed frame from navigating; project slugs are
+ * internal pages.
+ */
+function openProject(dest: string) {
+  if (dest.startsWith('http')) {
+    window.open(dest, '_blank', 'noopener,noreferrer');
+  } else {
+    window.location.href = dest.startsWith('/projects/') ? dest : `/projects/${dest}`;
+  }
+}
+
+// Helper: narrow bbox to NYC community districts only (avoids stray features skewing fit)
 function getNYCBoundingFeatureCollection(data: any) {
   if (!data || !Array.isArray(data.features)) return null;
   const filtered = data.features.filter((f: any) => {
@@ -91,6 +105,8 @@ interface MapVisualizerProps {
   CDToSlugMap?: Record<string, string>;
   /** Student names shown under the CD code in the hover tooltip. */
   CDToStudentsMap?: Record<string, string[]>;
+  /** Neighborhood names per district, for the search box. */
+  CDToNeighborhoodsMap?: Record<string, string[]>;
   /**
    * Vertical nudge applied after the initial fit, in pixels. Positive
    * moves the view south. Leave undefined to keep the pitch-compensating
@@ -130,6 +146,7 @@ export default function MapVisualizer({
   mapId = 'default-map',
   CDToSlugMap = {},
   CDToStudentsMap = {},
+  CDToNeighborhoodsMap = {},
   fitOffsetY = null,
   fitBounds
 }: MapVisualizerProps) {
@@ -139,6 +156,20 @@ export default function MapVisualizer({
   const handleZoom = useCallback((newZoom: number) => {
     zoomLevelRef.current = newZoom;
   }, []);
+
+  // Only districts with a project are searchable; a result has to open something.
+  const searchableDistricts = useMemo<SearchableDistrict[]>(() =>
+    projectCDs
+      .map((cd) => String(cd).trim())
+      .filter((cd) => CDToSlugMap[cd])
+      .map((cd) => ({
+        cdCode: cd,
+        dest: CDToSlugMap[cd],
+        students: CDToStudentsMap[cd] ?? [],
+        neighborhoods: CDToNeighborhoodsMap[cd] ?? [],
+      })),
+    [projectCDs, CDToSlugMap, CDToStudentsMap, CDToNeighborhoodsMap]
+  );
 
   const mapContainerId = `map-container-${mapId}`;
   const mapLibreId = `maplibre-map-${mapId}`;
@@ -252,6 +283,8 @@ export default function MapVisualizer({
           </div>
         </div>
         
+        <MapSearch districts={searchableDistricts} onSelect={openProject} />
+
         {/* Map Container */}
         <div 
           id={mapContainerId} 
@@ -804,13 +837,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
         // Second tap - navigate
         activeTooltipCDRef.current = null;
         if (cdCode && projectCDsSet.has(String(cdCode).trim()) && CDToSlugMap[cdCode]) {
-          const dest = CDToSlugMap[cdCode];
-          if (dest.startsWith('http')) {
-            window.open(dest, '_blank', 'noopener,noreferrer');
-          } else {
-            const path = dest.startsWith('/projects/') ? dest : `/projects/${dest}`;
-            window.location.href = path;
-          }
+          openProject(CDToSlugMap[cdCode]);
         }
         return;
       }
@@ -823,13 +850,7 @@ const DeckGLMap = React.memo(function DeckGLMap({
     
     // Desktop: direct click navigation (existing behavior)
     if (cdCode && projectCDsSet.has(String(cdCode).trim()) && CDToSlugMap[cdCode]) {
-        const dest = CDToSlugMap[cdCode];
-        if (dest.startsWith('http')) {
-            window.open(dest, '_blank', 'noopener,noreferrer');
-        } else {
-            const path = dest.startsWith('/projects/') ? dest : `/projects/${dest}`;
-            window.location.href = path;
-        }
+        openProject(CDToSlugMap[cdCode]);
     }
   }, [projectCDsSet, CDToSlugMap, isMobileOrTablet, updateTooltipCore]);
 

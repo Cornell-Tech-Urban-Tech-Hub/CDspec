@@ -13,6 +13,7 @@ import BaseHead from '../components/layout/BaseHead.astro';
 import MapVisualizer from '../components/visualizations/MapVisualizer.js';
 import studentData2025 from '../../processing/student_data_verified_1204.json';
 import studentData2026 from '../../processing/student_data_2026.json';
+import cdNeighborhoods from '../../processing/cd_neighborhoods.json';
 import { getCollection } from 'astro:content';
 import '../styles/global.css';
 
@@ -102,6 +103,7 @@ studentData.forEach((student) => {
           fitOffsetY={0}
           CDToSlugMap={cdToSlugMap}
           CDToStudentsMap={cdToStudentsMap}
+          CDToNeighborhoodsMap={cdNeighborhoods}
         />
       </div>
       <!-- The host page cannot explain the map's color coding, so the

@@ -4,6 +4,7 @@ import { getCollection } from 'astro:content';
 import MapVisualizer from '../components/visualizations/MapVisualizer.js';
 import studentData2025 from '../../processing/student_data_verified_1204.json';
 import studentData2026 from '../../processing/student_data_2026.json';
+import cdNeighborhoods from '../../processing/cd_neighborhoods.json';
 
 // Both cohorts share one map. Their districts don't overlap; if a later
 // cohort reuses a district, the earlier cohort's StoryMap wins below.
@@ -126,6 +127,7 @@ studentData.forEach((student) => {
             mapId="home-page-map" 
             CDToSlugMap={cdToSlugMap}
             CDToStudentsMap={cdToStudentsMap}
+            CDToNeighborhoodsMap={cdNeighborhoods}
           />
         </div>
       </div>
